@@ -1,11 +1,9 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { getStorage } from "firebase/storage";
-import { getAnalytics } from "firebase/analytics";
+import { getFirestore } from "firebase/firestore";
 
-// 🔑 Te dane skopiujesz z Firebase Console -> Project settings -> General -> Your apps -> SDK setup
+
 const firebaseConfig = {
   apiKey: "AIzaSyCcMDNUOJHJ2JXn83kO8ScXc63FErAG-f4",
   authDomain: "sklep-ab300.firebaseapp.com",
@@ -16,11 +14,7 @@ const firebaseConfig = {
   measurementId: "G-SXYRXF8296"
 };
 
-// Inicjalizacja
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 
-// Eksport usług
-export const db = getFirestore(app);
 export const auth = getAuth(app);
-export const storage = getStorage(app);
+export const db = getFirestore(app);
