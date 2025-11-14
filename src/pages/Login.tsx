@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { auth, db } from "../firebase";
 import {
   signInWithEmailAndPassword,
@@ -20,6 +20,14 @@ const Login = () => {
   const [address, setAddress] = useState("");
   const [isRegister, setIsRegister] = useState(false);
   const [message, setMessage] = useState("");
+
+  // ✅ jeżeli wróciliśmy po zmianie hasła (z continueUrl)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("reset") === "1") {
+      setMessage("Hasło zostało zresetowane. Zaloguj się nowym hasłem.");
+    }
+  }, [location.search]);
 
   // ✅ jeśli użytkownik już zalogowany – nie pokazujemy formularza
   if (user) {
@@ -147,6 +155,18 @@ const Login = () => {
             {isRegister ? "Zarejestruj się" : "Zaloguj się"}
           </button>
         </form>
+
+        {/* Link do resetu hasła */}
+        {!isRegister && (
+          <div className="text-center mt-3">
+            <Link
+              to="/reset-password"
+              className="text-sm text-purple-700 hover:underline"
+            >
+              Zapomniałeś hasła?
+            </Link>
+          </div>
+        )}
 
         {message && (
           <p

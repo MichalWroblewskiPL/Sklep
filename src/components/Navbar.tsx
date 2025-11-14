@@ -15,11 +15,30 @@ const Navbar = () => {
         {user ? (
           <>
             <span className="text-sm text-gray-700">
-              {user.email} ({user.role})
+              {user.email}{" "}
+              {user.role === "employee"
+                ? "(Pracownik)"
+                : user.role === "admin"
+                ? "(Administrator)"
+                : "(Użytkownik)"}
             </span>
-            <Link to="/profile" className="text-purple-700 text-sm hover:underline">
-              Profil
-            </Link>
+
+            {user.role === "employee" || user.role === "admin" ? (
+              <Link
+                to="/employee"
+                className="text-purple-700 text-sm hover:underline"
+              >
+                Panel pracownika
+              </Link>
+            ) : (
+              <Link
+                to="/profile"
+                className="text-purple-700 text-sm hover:underline"
+              >
+                Profil
+              </Link>
+            )}
+
             <button
               onClick={logout}
               className="text-purple-700 text-sm hover:underline"

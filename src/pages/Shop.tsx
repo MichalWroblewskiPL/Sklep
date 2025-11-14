@@ -1,27 +1,32 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface Product {
   id: string;
   name: string;
-  price: number;
-  category: string;
-  stockQuantity: number;
-  mainImageUrl: string;
-  description: string;
+  price?: number;          // w bazie masz price (number)
+  category?: string;
+  stockQuantity?: number;
+  mainImageUrl?: string;
+  description?: string;
 }
 
 const Shop = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredCategory, setFilteredCategory] = useState<string>("Wszystkie");
   const [loading, setLoading] = useState(true);
 
+  // Pobierz produkty z Firestore
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, "products"));
-        const data = querySnapshot.docs.map((doc) => ({
+        const snapshot = await getDocs(collection(db, "products"));
+        const data = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as Product[];
@@ -36,12 +41,36 @@ const Shop = () => {
     fetchProducts();
   }, []);
 
-  const categories = ["Wszystkie", "Karty graficzne", "Procesory", "Akcesoria komputerowe"];
+  // Ustaw kategorię z query param (np. /shop?category=Klawiatury)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const cat = params.get("category");
+    if (cat) setFilteredCategory(cat);
+  }, [location.search]);
+
+  // Kategorie dynamicznie z danych
+  const categories = useMemo(() => {
+    const set = new Set<string>(["Wszystkie"]);
+    products.forEach((p) => p.category && set.add(p.category));
+    return Array.from(set);
+  }, [products]);
 
   const filteredProducts =
     filteredCategory === "Wszystkie"
       ? products
       : products.filter((p) => p.category === filteredCategory);
+
+  const handleCategoryClick = (cat: string) => {
+    setFilteredCategory(cat);
+    if (cat === "Wszystkie") {
+      navigate("/shop", { replace: true });
+    } else {
+      navigate(`/shop?category=${encodeURIComponent(cat)}`, { replace: true });
+    }
+  };
+
+  const formatPrice = (price?: number) =>
+    typeof price === "number" ? `${price.toFixed(2)} zł` : "—";
 
   return (
     <div className="min-h-screen bg-gray-50 py-16 px-6">
@@ -49,15 +78,15 @@ const Shop = () => {
         Nasze produkty
       </h1>
 
-      {/* Filtry kategorii */}
+      {/* Filtry kategorii (dynamiczne) */}
       <div className="flex justify-center gap-4 mb-10 flex-wrap">
         {categories.map((cat) => (
           <button
             key={cat}
-            onClick={() => setFilteredCategory(cat)}
+            onClick={() => handleCategoryClick(cat)}
             className={`px-5 py-2 rounded-full font-medium transition ${
               filteredCategory === cat
-                ? "bg-purple-700 text-white"
+                ? "bg-purple-700 text-white shadow"
                 : "bg-white text-purple-700 border border-purple-300 hover:bg-purple-50"
             }`}
           >
@@ -77,7 +106,7 @@ const Shop = () => {
               className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition"
             >
               <img
-                src={product.mainImageUrl}
+                src={product.mainImageUrl || "https://source.unsplash.com/600x400/?computer,hardware"}
                 alt={product.name}
                 className="w-full h-48 object-cover"
               />
@@ -85,11 +114,11 @@ const Shop = () => {
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   {product.name}
                 </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  {product.description}
+                <p className="text-sm text-gray-600 mb-4 line-clamp-3">
+                  {product.description || "—"}
                 </p>
                 <p className="text-lg font-bold text-purple-700">
-                  {product.price.toFixed(2)} zł
+                  {formatPrice(product.price)}
                 </p>
               </div>
             </div>
