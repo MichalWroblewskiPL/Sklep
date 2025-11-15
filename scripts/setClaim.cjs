@@ -5,7 +5,7 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
-// 👇 TU WKLEJ UID PRACOWNIKA
+
 const uid = "bCBZPyMC4ZaujYyRKyK4dvWKK413";
 
 admin.auth().setCustomUserClaims(uid, { role: "employee" })
