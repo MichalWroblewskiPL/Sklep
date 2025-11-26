@@ -5,7 +5,12 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  collection,
+} from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
@@ -15,21 +20,29 @@ const Login = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [address, setAddress] = useState("");
+
+  // pełna struktura adresu — Opcja A
+  const [street, setStreet] = useState("");
+  const [city, setCity] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [country, setCountry] = useState("");
+  const [phone, setPhone] = useState("");
+
   const [isRegister, setIsRegister] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ✅ jeżeli wróciliśmy po zmianie hasła (z continueUrl)
+  // ✓ info po powrocie z resetu hasła
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("reset") === "1") {
-      setMessage("Hasło zostało zresetowane. Zaloguj się nowym hasłem.");
+      setMessage("Hasło zostało zmienione. Zaloguj się nowym hasłem.");
     }
   }, [location.search]);
 
-  // ✅ jeśli użytkownik już zalogowany – nie pokazujemy formularza
+  // Jeśli zalogowany → nie pokazujemy formularza
   if (user) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center bg-gray-50">
@@ -49,52 +62,59 @@ const Login = () => {
     );
   }
 
-  // 🔐 Obsługa logowania i rejestracji
+  // 🔐 logowanie / rejestracja
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
       if (isRegister) {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
+        // utwórz konto
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
 
-        // Zapis danych użytkownika w Firestore
-        await setDoc(doc(db, "users", user.uid), {
-          email: user.email,
+        const newUser = userCredential.user;
+
+        // 🧩 pełny model usera zgodny z Firestore
+        const userData = {
+          email: newUser.email,
           firstName,
           lastName,
-          address,
           role: "user",
           createdAt: serverTimestamp(),
+          address: {
+            street,
+            city,
+            postalCode,
+            country,
+            phone,
+          },
+        };
+
+        // Zapis usera
+        await setDoc(doc(db, "users", newUser.uid), userData);
+
+        // 🔥 Automatycznie tworzony koszyk
+        await setDoc(doc(db, "users", newUser.uid, "cart", "cart"), {
+          items: [],
         });
 
-        // Wyczyść formularz
-        setEmail("");
-        setPassword("");
-        setFirstName("");
-        setLastName("");
-        setAddress("");
-
-        // 🔁 Przejdź na stronę główną — użytkownik już zalogowany
+        // przekierowanie po rejestracji
         navigate("/");
         return;
       }
 
-      // Logowanie istniejącego użytkownika
+      // normalne logowanie
       await signInWithEmailAndPassword(auth, email, password);
       setMessage("Zalogowano pomyślnie!");
       setTimeout(() => navigate("/"), 500);
-
-    } catch (error) {
-      if (error instanceof Error) {
-        setMessage("Błąd: " + error.message);
-      } else {
-        setMessage("Wystąpił nieznany błąd.");
-      }
+    } catch (error: any) {
+      setMessage("Błąd: " + error.message);
     }
   };
 
-  // 🧱 Widok formularza logowania / rejestracji
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center bg-gray-50">
       <div className="bg-white shadow-md rounded-xl p-8 w-full max-w-sm">
@@ -103,6 +123,7 @@ const Login = () => {
         </h2>
 
         <form onSubmit={handleAuth} className="flex flex-col gap-4">
+          {/* Formularz rejestracji */}
           {isRegister && (
             <>
               <input
@@ -110,44 +131,81 @@ const Login = () => {
                 placeholder="Imię"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required
+                className="border border-gray-300 rounded px-3 py-2"
               />
               <input
                 type="text"
                 placeholder="Nazwisko"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 required
+                className="border border-gray-300 rounded px-3 py-2"
+              />
+
+              {/* pełny adres */}
+              <input
+                type="text"
+                placeholder="Ulica i numer"
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                required
+                className="border border-gray-300 rounded px-3 py-2"
               />
               <input
                 type="text"
-                placeholder="Adres zamieszkania"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Miasto"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
                 required
+                className="border border-gray-300 rounded px-3 py-2"
+              />
+              <input
+                type="text"
+                placeholder="Kod pocztowy"
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
+                required
+                className="border border-gray-300 rounded px-3 py-2"
+              />
+              <input
+                type="text"
+                placeholder="Kraj"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                required
+                className="border border-gray-300 rounded px-3 py-2"
+              />
+              <input
+                type="text"
+                placeholder="Telefon"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                className="border border-gray-300 rounded px-3 py-2"
               />
             </>
           )}
 
+          {/* pola wspólne */}
           <input
             type="email"
-            placeholder="Adres email"
+            placeholder="Adres e-mail"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
+            className="border border-gray-300 rounded px-3 py-2"
           />
+
           <input
             type="password"
             placeholder="Hasło"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
+            className="border border-gray-300 rounded px-3 py-2"
           />
+
           <button
             type="submit"
             className="bg-purple-700 text-white py-2 rounded-lg font-semibold hover:bg-purple-800 transition"
@@ -156,7 +214,7 @@ const Login = () => {
           </button>
         </form>
 
-        {/* Link do resetu hasła */}
+        {/* reset hasła */}
         {!isRegister && (
           <div className="text-center mt-3">
             <Link
@@ -168,6 +226,7 @@ const Login = () => {
           </div>
         )}
 
+        {/* komunikaty */}
         {message && (
           <p
             className={`text-center text-sm mt-4 ${
@@ -178,6 +237,7 @@ const Login = () => {
           </p>
         )}
 
+        {/* przełącznik login <-> register */}
         <p
           onClick={() => {
             setIsRegister(!isRegister);

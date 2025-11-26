@@ -10,7 +10,6 @@ interface UserRecord {
   email: string;
   firstName?: string;
   lastName?: string;
-  address?: string;
   role: string;
 }
 
@@ -23,24 +22,21 @@ const EmployeeDashboard = () => {
   const [editingUser, setEditingUser] = useState<UserRecord | null>(null);
   const [form, setForm] = useState<UserRecord | null>(null);
 
-  // 🔐 Ochrona strony przed dostępem zwykłych userów
+  // Ochrona dostępu
   useEffect(() => {
     if (!user) return;
-    if (user.role !== "employee" && user.role !== "admin") {
-      navigate("/"); // brak uprawnień
-    }
+    if (user.role !== "employee" && user.role !== "admin") navigate("/");
   }, [user]);
 
-  // 📌 Pobieranie wszystkich użytkowników
+  // Pobieranie użytkowników
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const querySnap = await getDocs(collection(db, "users"));
-        const list = querySnap.docs.map((docSnap) => ({
-          id: docSnap.id,
-          ...docSnap.data(),
+        const snap = await getDocs(collection(db, "users"));
+        const list = snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
         })) as UserRecord[];
-
         setUsers(list);
       } catch (err) {
         console.error("Błąd pobierania użytkowników:", err);
@@ -48,7 +44,6 @@ const EmployeeDashboard = () => {
         setLoading(false);
       }
     };
-
     fetchUsers();
   }, []);
 
@@ -59,120 +54,143 @@ const EmployeeDashboard = () => {
 
   const saveEdit = async () => {
     if (!form) return;
-
     try {
       await updateDoc(doc(db, "users", form.id), {
-        firstName: form.firstName || "",
-        lastName: form.lastName || "",
-        address: form.address || "",
+        firstName: form.firstName,
+        lastName: form.lastName,
         email: form.email,
         role: form.role,
       });
 
-      setUsers((prev) =>
-        prev.map((u) => (u.id === form.id ? form : u))
-      );
-
+      setUsers((prev) => prev.map((u) => (u.id === form.id ? form : u)));
       setEditingUser(null);
       setForm(null);
-      alert("Dane użytkownika zostały zapisane.");
+      alert("Dane zapisane.");
     } catch (err) {
-      console.error("Błąd zapisu:", err);
+      console.error(err);
     }
   };
 
-  // 🛠 Reset hasła
   const handlePasswordReset = async (email: string) => {
     try {
       await sendPasswordResetEmail(auth, email);
-      alert("Wysłano link do zmiany hasła na " + email);
+      alert("Wysłano link resetujący do " + email);
     } catch (err) {
-      console.error("Błąd resetu hasła:", err);
-      alert("Nie udało się wysłać maila.");
+      console.error(err);
+      alert("Błąd wysyłania resetu hasła.");
     }
   };
 
-  // 🗑 Usuwanie użytkownika
   const deleteUserAccount = async (id: string) => {
-    if (!window.confirm("Czy na pewno chcesz usunąć tego użytkownika?")) return;
+    if (!window.confirm("Usunąć użytkownika?")) return;
 
     try {
       await deleteDoc(doc(db, "users", id));
       setUsers((prev) => prev.filter((u) => u.id !== id));
-      alert("Użytkownik został usunięty.");
+      alert("Usunięto użytkownika.");
     } catch (err) {
-      console.error("Błąd usuwania:", err);
+      console.error(err);
+      alert("Błąd usuwania.");
     }
   };
 
   if (loading) {
-    return <p className="text-center mt-10 text-gray-600">Ładowanie...</p>;
+    return <p className="text-center mt-10">Ładowanie...</p>;
   }
 
   return (
     <div className="min-h-screen p-10 bg-gray-50">
-      <h1 className="text-4xl font-bold text-purple-700 mb-6 text-center">
+      <h1 className="text-4xl font-bold text-purple-700 mb-10 text-center">
         Panel pracownika
       </h1>
 
-      {/* =======================
-          LISTA UŻYTKOWNIKÓW
-      ======================== */}
-      <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-        Zarządzanie użytkownikami
-      </h2>
+      {/* === ZARZĄDZANIE UŻYTKOWNIKAMI === */}
+      <section className="bg-white rounded-xl shadow p-6 mb-12">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+          Zarządzanie użytkownikami
+        </h2>
 
-      <div className="bg-white rounded-xl shadow p-6">
-        {users.length === 0 ? (
-          <p>Brak użytkowników.</p>
-        ) : (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b text-gray-700">
-                <th className="p-2">Email</th>
-                <th className="p-2">Imię</th>
-                <th className="p-2">Nazwisko</th>
-                <th className="p-2">Rola</th>
-                <th className="p-2 text-right">Akcje</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className="border-b hover:bg-gray-100">
-                  <td className="p-2">{u.email}</td>
-                  <td className="p-2">{u.firstName}</td>
-                  <td className="p-2">{u.lastName}</td>
-                  <td className="p-2">{u.role}</td>
-                  <td className="p-2 flex gap-2 justify-end">
-                    <button
-                      onClick={() => startEdit(u)}
-                      className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700"
-                    >
-                      Edytuj
-                    </button>
-                    <button
-                      onClick={() => handlePasswordReset(u.email)}
-                      className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    >
-                      Reset hasła
-                    </button>
+        <table className="w-full text-left">
+          <thead>
+            <tr className="border-b">
+              <th className="p-2">Email</th>
+              <th className="p-2">Imię</th>
+              <th className="p-2">Nazwisko</th>
+              <th className="p-2">Rola</th>
+              <th className="p-2 text-right">Akcje</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} className="border-b hover:bg-gray-100">
+                <td className="p-2">{u.email}</td>
+                <td className="p-2">{u.firstName}</td>
+                <td className="p-2">{u.lastName}</td>
+                <td className="p-2">{u.role}</td>
+
+                <td className="p-2 flex gap-2 justify-end">
+                  <button
+                    onClick={() => startEdit(u)}
+                    className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700"
+                  >
+                    Edytuj
+                  </button>
+
+                  <button
+                    onClick={() => handlePasswordReset(u.email)}
+                    className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Reset hasła
+                  </button>
+
+                  {u.id !== user.uid && (
                     <button
                       onClick={() => deleteUserAccount(u.id)}
                       className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
                     >
                       Usuń
                     </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
 
-      {/* =======================
-          MODAL EDYCJI UŻYTKOWNIKA
-      ======================== */}
+      {/* === ZARZĄDZANIE PRODUKTAMI === */}
+      <section className="bg-white rounded-xl shadow p-6 mb-12">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+          Zarządzanie produktami
+        </h2>
+
+        <button
+          onClick={() => navigate("/employee/products")}
+          className="px-6 py-3 bg-purple-700 text-white rounded-lg font-semibold hover:bg-purple-800"
+        >
+          Przejdź do listy produktów
+        </button>
+      </section>
+
+      {/* === NOWE! ZARZĄDZANIE ZAMÓWIENIAMI === */}
+      <section className="bg-white rounded-xl shadow p-6">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+          Zarządzanie zamówieniami
+        </h2>
+
+        <p className="text-gray-600 mb-4">
+          Przeglądaj wszystkie zamówienia, zmieniaj status i usuwaj zamówienia użytkowników.
+        </p>
+
+        <button
+          onClick={() => navigate("/employee/orders")}
+          className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
+        >
+          Przejdź do zamówień
+        </button>
+      </section>
+
+      {/* === MODAL EDYCJI === */}
       {editingUser && form && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
           <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-lg">
@@ -181,39 +199,32 @@ const EmployeeDashboard = () => {
             <div className="flex flex-col gap-3">
               <input
                 type="text"
-                placeholder="Imię"
                 value={form.firstName}
                 onChange={(e) =>
                   setForm({ ...form, firstName: e.target.value })
                 }
                 className="border rounded px-3 py-2"
+                placeholder="Imię"
               />
+
               <input
                 type="text"
-                placeholder="Nazwisko"
                 value={form.lastName}
                 onChange={(e) =>
                   setForm({ ...form, lastName: e.target.value })
                 }
                 className="border rounded px-3 py-2"
+                placeholder="Nazwisko"
               />
-              <input
-                type="text"
-                placeholder="Adres"
-                value={form.address}
-                onChange={(e) =>
-                  setForm({ ...form, address: e.target.value })
-                }
-                className="border rounded px-3 py-2"
-              />
+
               <input
                 type="email"
-                placeholder="Email"
                 value={form.email}
                 onChange={(e) =>
                   setForm({ ...form, email: e.target.value })
                 }
                 className="border rounded px-3 py-2"
+                placeholder="Email"
               />
 
               <select
@@ -223,7 +234,7 @@ const EmployeeDashboard = () => {
                 }
                 className="border rounded px-3 py-2"
               >
-                <option value="user">Użytkownik</option>
+                <option value="user">User</option>
                 <option value="employee">Pracownik</option>
                 <option value="admin">Administrator</option>
               </select>
@@ -239,6 +250,7 @@ const EmployeeDashboard = () => {
               >
                 Anuluj
               </button>
+
               <button
                 onClick={saveEdit}
                 className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
@@ -249,17 +261,6 @@ const EmployeeDashboard = () => {
           </div>
         </div>
       )}
-    <h2 className="text-2xl font-semibold text-gray-800 mt-12 mb-4">
-  Zarządzanie produktami
-</h2>
-
-<button
-  onClick={() => navigate("/employee/products")}
-  className="px-6 py-3 bg-purple-700 text-white rounded-lg font-semibold hover:bg-purple-800 transition"
->
-  Przejdź do listy produktów
-</button>
-
     </div>
   );
 };

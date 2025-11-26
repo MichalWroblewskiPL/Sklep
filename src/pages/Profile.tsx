@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { db, auth } from "../firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
@@ -16,37 +17,48 @@ const Profile = () => {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    address: "",
     email: "",
+    street: "",
+    city: "",
+    postalCode: "",
+    country: "",
+    phone: "",
   });
+
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ---- Stan dla zmiany hasła ----
+  // hasło
   const [showPasswordBox, setShowPasswordBox] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
   const [pwdMessage, setPwdMessage] = useState("");
 
-  // 🔹 Pobierz dane użytkownika z Firestore
+  // pobierz dane użytkownika
   useEffect(() => {
     const fetchUserData = async () => {
       if (!user) return;
+
       try {
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
+        const snap = await getDoc(doc(db, "users", user.uid));
+
+        if (snap.exists()) {
+          const data = snap.data();
           setFormData({
-            firstName: docSnap.data().firstName || "",
-            lastName: docSnap.data().lastName || "",
-            address: docSnap.data().address || "",
-            email: docSnap.data().email || "",
+            firstName: data.firstName || "",
+            lastName: data.lastName || "",
+            email: data.email || "",
+            street: data.address?.street || "",
+            city: data.address?.city || "",
+            postalCode: data.address?.postalCode || "",
+            country: data.address?.country || "",
+            phone: data.address?.phone || "",
           });
         }
       } catch (err) {
-        console.error("Błąd pobierania danych profilu:", err);
+        console.error("Błąd pobierania profilu", err);
       } finally {
         setLoading(false);
       }
@@ -55,289 +67,300 @@ const Profile = () => {
     fetchUserData();
   }, [user]);
 
-  if (!user) {
+  if (!user)
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh]">
-        <h2 className="text-2xl font-bold text-purple-700 mb-4">
-          Musisz być zalogowany, aby zobaczyć swój profil
+      <div className="min-h-[60vh] flex justify-center items-center">
+        <h2 className="text-2xl text-purple-700 font-bold">
+          Musisz być zalogowany
         </h2>
       </div>
     );
-  }
 
-  if (loading) {
+  if (loading)
     return (
-      <div className="flex items-center justify-center min-h-[70vh]">
-        <p className="text-gray-500">Ładowanie danych...</p>
+      <div className="min-h-[60vh] flex justify-center items-center text-gray-600">
+        Ładowanie profilu...
       </div>
     );
-  }
 
-  // 🔹 Obsługa edycji pól
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // obsługa zmian inputów
+  const handleChange = (e: any) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 🔹 Zapis zmian w Firestore i Firebase Auth (email)
+  // zapis danych
   const handleSave = async () => {
     try {
-      if (!user) return;
-      const docRef = doc(db, "users", user.uid);
+      const ref = doc(db, "users", user.uid);
 
-      await updateDoc(docRef, {
+      await updateDoc(ref, {
         firstName: formData.firstName,
         lastName: formData.lastName,
-        address: formData.address,
         email: formData.email,
+        address: {
+          street: formData.street,
+          city: formData.city,
+          postalCode: formData.postalCode,
+          country: formData.country,
+          phone: formData.phone,
+        },
       });
 
-      // Jeśli użytkownik zmienił e-mail, zaktualizuj też w Firebase Auth
-      if (auth.currentUser && auth.currentUser.email !== formData.email) {
+      if (auth.currentUser && auth.currentUser.email !== formData.email)
         await updateEmail(auth.currentUser, formData.email);
-      }
 
       setEditing(false);
-      setMessage("✅ Dane zostały zaktualizowane!");
+      setMessage("✅ Dane zaktualizowane!");
     } catch (err) {
-      console.error("Błąd zapisu danych:", err);
-      setMessage("❌ Wystąpił błąd podczas zapisywania zmian.");
+      console.error(err);
+      setMessage("❌ Błąd zapisu");
     }
   };
 
-  // 🔒 Zmiana hasła (z reautoryzacją)
+  // zmiana hasła
   const handleChangePassword = async () => {
     setPwdMessage("");
 
-    // Walidacja prostych warunków
-    if (newPassword.length < 6) {
-      setPwdMessage("❌ Nowe hasło musi mieć co najmniej 6 znaków.");
-      return;
-    }
-    if (newPassword !== newPasswordConfirm) {
-      setPwdMessage("❌ Nowe hasła nie są identyczne.");
-      return;
-    }
-    if (!auth.currentUser || !auth.currentUser.email) {
-      setPwdMessage("❌ Brak zalogowanego użytkownika lub adresu e-mail.");
-      return;
-    }
+    if (newPassword !== newPasswordConfirm)
+      return setPwdMessage("❌ Hasła nie są identyczne");
+
+    if (newPassword.length < 6)
+      return setPwdMessage("❌ Minimum 6 znaków");
+
     try {
-      // Firebase wymaga „świeżych” poświadczeń — reautoryzacja
       const credential = EmailAuthProvider.credential(
-        auth.currentUser.email,
+        auth.currentUser!.email!,
         currentPassword
       );
-      await reauthenticateWithCredential(auth.currentUser, credential);
 
-      // Aktualizacja hasła
-      await updatePassword(auth.currentUser, newPassword);
+      await reauthenticateWithCredential(auth.currentUser!, credential);
+      await updatePassword(auth.currentUser!, newPassword);
 
-      setPwdMessage("✅ Hasło zostało zmienione.");
-      setCurrentPassword("");
-      setNewPassword("");
-      setNewPasswordConfirm("");
+      setPwdMessage("✅ Hasło zostało zmienione");
       setShowPasswordBox(false);
     } catch (err: any) {
-      // Typowe kody błędów Firebase
-      const code = err?.code || "";
-      if (code === "auth/wrong-password") {
-        setPwdMessage("❌ Błędne obecne hasło.");
-      } else if (code === "auth/too-many-requests") {
-        setPwdMessage(
-          "❌ Zbyt wiele prób. Spróbuj ponownie później lub użyj resetu hasła e-mailem."
-        );
-      } else if (code === "auth/requires-recent-login") {
-        setPwdMessage(
-          "ℹ️ Wymagane ponowne zalogowanie. Możesz też skorzystać z resetu hasła e-mailem."
-        );
-      } else {
-        setPwdMessage("❌ Nie udało się zmienić hasła.");
-        console.error("Password change error:", err);
-      }
+      console.error(err);
+      setPwdMessage("❌ Błąd zmiany hasła");
     }
   };
 
-  // ✉️ Alternatywa: wyślij link resetujący na e-mail
+  // reset hasła przez e-mail
   const handleSendResetLink = async () => {
-    setPwdMessage("");
-    if (!auth.currentUser || !auth.currentUser.email) {
-      setPwdMessage("❌ Brak zalogowanego użytkownika lub adresu e-mail.");
-      return;
-    }
     try {
-      await sendPasswordResetEmail(auth, auth.currentUser.email);
-      setPwdMessage("✅ Wysłano wiadomość z linkiem do zmiany hasła.");
+      await sendPasswordResetEmail(auth, formData.email);
+      setPwdMessage("📩 Link wysłany na e-mail");
     } catch (err) {
-      console.error("Reset email error:", err);
-      setPwdMessage("❌ Nie udało się wysłać wiadomości resetującej.");
+      console.error(err);
+      setPwdMessage("❌ Błąd wysyłania linku");
     }
   };
 
   return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
-        <h2 className="text-3xl font-bold text-purple-700 mb-6 text-center">
-          Twój profil
-        </h2>
+    <div className="min-h-[80vh] bg-gray-50 px-4 py-10 flex justify-center">
+      <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        {/* Dane profilowe */}
-        <div className="flex flex-col gap-4">
-          <input
-            type="text"
-            name="firstName"
-            placeholder="Imię"
-            value={formData.firstName}
-            onChange={handleChange}
-            disabled={!editing}
-            className={`border rounded px-3 py-2 ${
-              editing ? "border-purple-500" : "border-gray-300 bg-gray-100"
-            }`}
-          />
-          <input
-            type="text"
-            name="lastName"
-            placeholder="Nazwisko"
-            value={formData.lastName}
-            onChange={handleChange}
-            disabled={!editing}
-            className={`border rounded px-3 py-2 ${
-              editing ? "border-purple-500" : "border-gray-100"
-            }`}
-          />
-          <input
-            type="text"
-            name="address"
-            placeholder="Adres"
-            value={formData.address}
-            onChange={handleChange}
-            disabled={!editing}
-            className={`border rounded px-3 py-2 ${
-              editing ? "border-purple-500" : "border-gray-100"
-            }`}
-          />
-          <input
-            type="email"
-            name="email"
-            placeholder="Adres e-mail"
-            value={formData.email}
-            onChange={handleChange}
-            disabled={!editing}
-            className={`border rounded px-3 py-2 ${
-              editing ? "border-purple-500" : "border-gray-100"
-            }`}
-          />
+        {/* KAFEL 1 — Dane użytkownika */}
+        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Dane osobowe
+          </h2>
+
+          <div className="flex flex-col gap-3">
+            <input
+              name="firstName"
+              disabled={!editing}
+              placeholder="Imię"
+              value={formData.firstName}
+              onChange={handleChange}
+              className="input-field"
+            />
+
+            <input
+              name="lastName"
+              disabled={!editing}
+              placeholder="Nazwisko"
+              value={formData.lastName}
+              onChange={handleChange}
+              className="input-field"
+            />
+
+            <input
+              name="email"
+              disabled={!editing}
+              placeholder="E-mail"
+              value={formData.email}
+              onChange={handleChange}
+              className="input-field"
+            />
+
+            {message && (
+              <p className="text-sm text-center mt-2 text-green-600">
+                {message}
+              </p>
+            )}
+
+            <div className="flex gap-2 mt-3">
+              {editing ? (
+                <>
+                  <button
+                    onClick={handleSave}
+                    className="btn-primary flex-1"
+                  >
+                    Zapisz
+                  </button>
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="btn-secondary flex-1"
+                  >
+                    Anuluj
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="btn-primary w-full"
+                >
+                  Edytuj dane
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
-        {message && (
-          <p
-            className={`text-center text-sm mt-4 ${
-              message.includes("✅") ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {message}
+        {/* KAFEL 2 — Adres dostawy */}
+        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Adres dostawy
+          </h2>
+
+          <div className="flex flex-col gap-3">
+            <input
+              name="street"
+              disabled={!editing}
+              placeholder="Ulica i numer"
+              value={formData.street}
+              onChange={handleChange}
+              className="input-field"
+            />
+
+            <input
+              name="city"
+              disabled={!editing}
+              placeholder="Miasto"
+              value={formData.city}
+              onChange={handleChange}
+              className="input-field"
+            />
+
+            <input
+              name="postalCode"
+              disabled={!editing}
+              placeholder="Kod pocztowy"
+              value={formData.postalCode}
+              onChange={handleChange}
+              className="input-field"
+            />
+
+            <input
+              name="country"
+              disabled={!editing}
+              placeholder="Kraj"
+              value={formData.country}
+              onChange={handleChange}
+              className="input-field"
+            />
+
+            <input
+              name="phone"
+              disabled={!editing}
+              placeholder="Telefon"
+              value={formData.phone}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </div>
+        </div>
+
+        {/* KAFEL 3 — Zamówienia */}
+        <Link
+          to="/orders"
+          className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition cursor-pointer flex flex-col justify-center items-center"
+        >
+          <h2 className="text-xl font-semibold text-gray-900">
+            Moje zamówienia
+          </h2>
+          <p className="text-purple-700 font-medium mt-2">
+            Zobacz historię zamówień →
           </p>
-        )}
+        </Link>
 
-        {/* Akcje profilu */}
-        <div className="flex justify-center mt-6 gap-3 flex-wrap">
-          {editing ? (
-            <>
-              <button
-                onClick={handleSave}
-                className="bg-green-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-600 transition"
-              >
-                Zapisz
-              </button>
-              <button
-                onClick={() => {
-                  setEditing(false);
-                  setMessage("");
-                }}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-400 transition"
-              >
-                Anuluj
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => setEditing(true)}
-                className="bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold hover:bg-purple-800 transition"
-              >
-                Edytuj dane
-              </button>
-              <button
-                onClick={() => {
-                  setShowPasswordBox((s) => !s);
-                  setPwdMessage("");
-                }}
-                className="bg-white border border-purple-300 text-purple-700 px-6 py-2 rounded-lg font-semibold hover:bg-purple-50 transition"
-              >
-                Zmień hasło
-              </button>
-            </>
-          )}
-        </div>
+        {/* KAFEL 4 — Zmiana hasła */}
+        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Bezpieczeństwo konta
+          </h2>
 
-        {/* Sekcja zmiany hasła */}
-        {showPasswordBox && (
-          <div className="mt-8 border-t pt-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4 text-center">
-              Zmiana hasła
-            </h3>
+          <button
+            onClick={() => setShowPasswordBox((v) => !v)}
+            className="btn-secondary w-full"
+          >
+            Zmień hasło
+          </button>
 
-            <div className="flex flex-col gap-3">
+          {showPasswordBox && (
+            <div className="mt-4 flex flex-col gap-3">
               <input
                 type="password"
                 placeholder="Obecne hasło"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="input-field"
               />
               <input
                 type="password"
-                placeholder="Nowe hasło (min. 6 znaków)"
+                placeholder="Nowe hasło"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="input-field"
               />
               <input
                 type="password"
-                placeholder="Powtórz nowe hasło"
+                placeholder="Powtórz hasło"
                 value={newPasswordConfirm}
-                onChange={(e) => setNewPasswordConfirm(e.target.value)}
-                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                onChange={(e) =>
+                  setNewPasswordConfirm(e.target.value)
+                }
+                className="input-field"
               />
-            </div>
 
-            {pwdMessage && (
-              <p
-                className={`text-center text-sm mt-4 ${
-                  pwdMessage.startsWith("✅")
-                    ? "text-green-600"
-                    : "text-red-600"
-                }`}
-              >
-                {pwdMessage}
-              </p>
-            )}
+              {pwdMessage && (
+                <p
+                  className={`text-sm text-center ${
+                    pwdMessage.startsWith("✅")
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {pwdMessage}
+                </p>
+              )}
 
-            <div className="mt-5 flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 onClick={handleChangePassword}
-                className="bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold hover:bg-purple-800 transition"
+                className="btn-primary w-full"
               >
                 Zapisz nowe hasło
               </button>
+
               <button
                 onClick={handleSendResetLink}
-                className="bg-white border border-purple-300 text-purple-700 px-6 py-2 rounded-lg font-semibold hover:bg-purple-50 transition"
+                className="btn-secondary w-full"
               >
-                Wyślij link resetujący e-mailem
+                Wyślij link resetujący
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

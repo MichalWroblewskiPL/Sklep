@@ -10,6 +10,15 @@ import ForgotPassword from "./pages/ForgotPassword";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import EmployeeProducts from "./pages/EmployeeProducts";
 import EmployeeEditProduct from "./pages/EmployeeEditProduct";
+import ProductPage from "./pages/ProductPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import CartPage from "./pages/CartPage";
+import OrdersPage from "./pages/OrdersPage";
+import OrderDetails from "./pages/OrderDetails";
+import EmployeeOrders from "./pages/EmployeeOrders";
+import EmployeeOrderDetails from "./pages/EmployeeOrderDetails";
+
+
 
 
 const App = () => {
@@ -28,6 +37,13 @@ const App = () => {
               <Route path="/employee" element={<EmployeeDashboard />} />
               <Route path="/employee/products" element={<EmployeeProducts />} />
               <Route path="/employee/products/:id" element={<EmployeeEditProduct />} />
+              <Route path="/product/:id" element={<ProductPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/orders" element={<OrdersPage />} />
+              <Route path="/order/:id" element={<OrderDetails />} />
+              <Route path="/employee/orders" element={<EmployeeOrders />} />
+              <Route path="/employee/orders/:orderId" element={<EmployeeOrderDetails />} />
             </Routes>
           </main>
           <Footer />

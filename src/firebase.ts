@@ -25,3 +25,6 @@ export const storage = getStorage(app);
 
 // tymczasowo wystaw na window (debug)
 ;(window as any).__pcbase_auth = auth;
+
+//@ts-ignore
+window.auth = auth;

@@ -1,13 +1,25 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import type { User } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 
-interface AppUser {
+type Address = {
+  street: string;
+  city: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+};
+
+export interface AppUser {
   uid: string;
   email: string | null;
   role: string;
+  firstName?: string;
+  lastName?: string;
+  address?: Address;
 }
 
 interface AuthContextType {
@@ -24,33 +36,50 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         try {
-          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+          // 🔥 POBIERAMY CUSTOM CLAIMS — TU JEST PRAWDZIWA ROLA
+          const tokenResult = await firebaseUser.getIdTokenResult();
+          const claimRole = tokenResult.claims.role;
 
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            setUser({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              role: data.role || "user",
-            });
-          } else {
-            // Jeśli użytkownik nie istnieje w Firestore, utwórz domyślny wpis
-            setUser({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              role: "user",
-            });
-          }
+          // 🔥 POBIERAMY DANE Z FIRESTORE
+          const userDocRef = doc(db, "users", firebaseUser.uid);
+          const userDoc = await getDoc(userDocRef);
+
+          let firestoreData: any = userDoc.exists() ? userDoc.data() : {};
+
+          const selectedRole =
+            claimRole || firestoreData.role || "user"; // priorytet: TOKEN → FIRESTORE → user
+
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            role: selectedRole,
+            firstName: firestoreData.firstName || "",
+            lastName: firestoreData.lastName || "",
+            address: firestoreData.address || {
+              street: "",
+              city: "",
+              postalCode: "",
+              country: "",
+              phone: "",
+            },
+          });
         } catch (err) {
           console.error("Błąd pobierania danych użytkownika:", err);
+
+          // fallback — minimalny user
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            role: "user",
+          });
         }
       } else {
         setUser(null);

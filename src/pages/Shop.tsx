@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
+
 
 interface Product {
   id: string;
@@ -101,27 +102,24 @@ const Shop = () => {
       ) : filteredProducts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {filteredProducts.map((product) => (
-            <div
-              key={product.id}
-              className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition"
-            >
+            <Link
+              to={`/product/${product.id}`}
+              className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition block">
               <img
-                src={product.mainImageUrl || "https://source.unsplash.com/600x400/?computer,hardware"}
+                src={product.mainImageUrl}
                 alt={product.name}
                 className="w-full h-48 object-cover"
               />
               <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {product.name}
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
                 <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                  {product.description || "—"}
+                  {product.description}
                 </p>
                 <p className="text-lg font-bold text-purple-700">
-                  {formatPrice(product.price)}
+                  {product.price ? `${product.price.toFixed(2)} zł` : "—"}
                 </p>
-              </div>
             </div>
+            </Link>
           ))}
         </div>
       ) : (
