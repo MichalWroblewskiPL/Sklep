@@ -9,7 +9,6 @@ import {
   doc,
   setDoc,
   serverTimestamp,
-  collection,
 } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 

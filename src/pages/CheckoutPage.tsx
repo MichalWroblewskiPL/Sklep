@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
-import { db, auth } from "../firebase";
+import { db } from "../firebase";
 import {
   doc,
   getDoc,
   runTransaction,
   collection,
-  addDoc,
   serverTimestamp,
-  setDoc,
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -114,7 +112,7 @@ const handlePurchase = async () => {
       // Update stocka
       productSnaps.forEach((snap, i) => {
         const ref = productRefs[i];
-        const stock = snap.data().stockQuantity;
+        const stock = snap.data()?.stockQuantity;
         const qty = cartItems[i].quantity;
 
         transaction.update(ref, {

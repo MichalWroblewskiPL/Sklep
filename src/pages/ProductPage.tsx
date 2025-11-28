@@ -104,7 +104,7 @@ const ProductPage = () => {
             <ul className="text-sm text-gray-700">
               {Object.entries(product.specifications).map(([key, value]) => (
                 <li key={key}>
-                  <strong>{key}:</strong> {value}
+                  <strong>{key}:</strong> <span>{String(value)}</span>
                 </li>
               ))}
             </ul>

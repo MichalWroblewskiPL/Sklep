@@ -68,8 +68,6 @@ const Shop = () => {
     }
   };
 
-  const formatPrice = (price?: number) =>
-    typeof price === "number" ? `${price.toFixed(2)} zł` : "—";
 
   return (
     <div className="min-h-screen bg-gray-50 py-16 px-6">
