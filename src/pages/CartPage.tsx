@@ -119,7 +119,6 @@ const CartPage = () => {
               </p>
 
               <div className="flex items-center gap-3 mt-3">
-                {/* Quantity selector */}
                 <button
                   className="px-3 py-1 bg-gray-200 rounded"
                   disabled={item.quantity <= 1}
@@ -138,7 +137,6 @@ const CartPage = () => {
                   +
                 </button>
 
-                {/* Remove */}
                 <button
                   onClick={() => removeItem(item.productId)}
                   className="ml-auto text-red-600 hover:underline"
@@ -151,7 +149,6 @@ const CartPage = () => {
         ))}
       </div>
 
-      {/* Total */}
       <div className="mt-10 flex justify-between items-center">
         <h2 className="text-2xl font-bold">Suma:</h2>
         <p className="text-3xl font-bold text-purple-700">
@@ -159,7 +156,6 @@ const CartPage = () => {
         </p>
       </div>
 
-      {/* Checkout button */}
       <button
         onClick={() => navigate("/checkout")}
         className="mt-6 w-full bg-purple-700 text-white py-3 rounded-lg text-lg font-semibold hover:bg-purple-800"

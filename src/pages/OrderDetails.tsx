@@ -84,7 +84,6 @@ const OrderDetails = () => {
         Zamówienie #{id}
       </h1>
 
-      {/* Sekcja główna */}
       <div className="bg-white shadow rounded-xl p-6 mb-8">
         <p className="text-gray-700 mb-2">
           <strong>Data zamówienia:</strong> {createdDate}
@@ -103,7 +102,6 @@ const OrderDetails = () => {
         </p>
       </div>
 
-      {/* Pozycje zamówienia */}
       <h2 className="text-2xl font-bold mb-4 text-gray-900">Pozycje:</h2>
 
       <div className="bg-white shadow rounded-xl p-6">
@@ -128,7 +126,6 @@ const OrderDetails = () => {
         ))}
       </div>
 
-      {/* Podsumowanie */}
       <div className="bg-gray-100 rounded-xl p-6 text-xl font-semibold text-gray-900 mt-8">
         Razem:{" "}
         <span className="text-purple-700">

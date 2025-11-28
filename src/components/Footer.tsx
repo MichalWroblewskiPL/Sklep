@@ -4,7 +4,7 @@ const Footer = () => {
   return (
     <footer className="bg-white border-t border-gray-200 text-gray-700 py-6 mt-10">
       <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Logo */}
+        {/* Pc Base */}
         <div className="text-2xl font-extrabold flex items-center gap-1">
           <span className="text-purple-700">Pc</span>
           <span className="text-green-500">Base</span>

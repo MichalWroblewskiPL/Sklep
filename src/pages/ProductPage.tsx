@@ -81,14 +81,12 @@ const ProductPage = () => {
 
   return (
     <div className="max-w-5xl mx-auto p-8 grid grid-cols-1 md:grid-cols-2 gap-10">
-      {/* Zdjęcie */}
       <img
         src={product.mainImageUrl}
         alt={product.name}
         className="rounded-xl shadow-lg w-full h-96 object-cover"
       />
 
-      {/* Szczegóły */}
       <div>
         <h1 className="text-4xl font-bold text-gray-900">{product.name}</h1>
 
@@ -100,7 +98,6 @@ const ProductPage = () => {
           {product.description}
         </p>
 
-        {/* Specyfikacje */}
         {product.specifications && (
           <div className="mt-6 bg-gray-100 p-4 rounded-lg">
             <h3 className="font-semibold text-lg mb-2">Specyfikacja:</h3>
@@ -114,7 +111,6 @@ const ProductPage = () => {
           </div>
         )}
 
-        {/* Dodawanie do koszyka – niewidoczne dla pracownika */}
         {user?.role === "employee" || user?.role === "admin" ? (
           <p className="mt-6 text-red-600 font-semibold">
             Pracownik nie może dodawać produktów do koszyka.

@@ -16,15 +16,13 @@ interface Order {
   items: OrderItem[];
   totalValue: number;
   status?: string;
-  createdAt?: any; // może być Firestore Timestamp lub undefined
+  createdAt?: any;
 }
 
-/**
- * Helper: bezpiecznie zwraca timestamp jako Date albo null
- */
+
 const safeCreatedAtToDate = (createdAt: any): Date | null => {
   if (!createdAt) return null;
-  // Firestore Timestamp ma toDate() — preferuj to
+
   if (typeof createdAt.toDate === "function") {
     try {
       return createdAt.toDate();
@@ -32,18 +30,18 @@ const safeCreatedAtToDate = (createdAt: any): Date | null => {
       return null;
     }
   }
-  // niekiedy mamy plain object { seconds, nanoseconds }
+
   if (createdAt.seconds && typeof createdAt.seconds === "number") {
     return new Date(createdAt.seconds * 1000);
   }
-  // albo już Date
+
   if (createdAt instanceof Date) return createdAt;
   return null;
 };
 
 const formatDate = (d: Date | null) => {
   if (!d) return "—";
-  return d.toLocaleString(); // lokalne formatowanie
+  return d.toLocaleString();
 };
 
 const OrdersPage = () => {
@@ -79,15 +77,14 @@ const OrdersPage = () => {
           } as Order;
         });
 
-        // Sortuj bezpiecznie — jeśli brak daty, traktujemy jako najstarsze
         list.sort((a, b) => {
           const da = safeCreatedAtToDate(a.createdAt);
           const dbt = safeCreatedAtToDate(b.createdAt);
 
           if (!da && !dbt) return 0;
-          if (!da) return 1; // a bez daty -> niżej
+          if (!da) return 1;
           if (!dbt) return -1;
-          return dbt.getTime() - da.getTime(); // nowsze na górze
+          return dbt.getTime() - da.getTime();
         });
 
         setOrders(list);

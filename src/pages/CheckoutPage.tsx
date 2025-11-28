@@ -92,7 +92,7 @@ const handlePurchase = async () => {
       const cartItems: CartItem[] = cartSnap.data().items || [];
       if (cartItems.length === 0) throw new Error("EMPTY_CART");
 
-      // --- 1) POBIERZ PRODUKTY NA POCZĄTKU (bez update)
+      // Pobierz produkty
       const productRefs = cartItems.map((item) =>
         doc(db, "products", item.productId)
       );
@@ -101,7 +101,7 @@ const handlePurchase = async () => {
         productRefs.map((ref) => transaction.get(ref))
       );
 
-      // --- 2) SPRAWDZ ZAPASY
+      // Sprawdz stock
       productSnaps.forEach((snap, i) => {
         if (!snap.exists()) throw new Error("PRODUCT_NOT_FOUND");
 
@@ -111,7 +111,7 @@ const handlePurchase = async () => {
         if (stock < qty) throw new Error("NOT_ENOUGH_STOCK");
       });
 
-      // --- 3) WSZYSTKIE UPDATE ROBIMY DOPIERO TERAZ
+      // Update stocka
       productSnaps.forEach((snap, i) => {
         const ref = productRefs[i];
         const stock = snap.data().stockQuantity;
@@ -122,7 +122,7 @@ const handlePurchase = async () => {
         });
       });
 
-      // --- 4) DODAJ ZAMÓWIENIE
+      // Nowe zamówienie
       const orderRef = doc(collection(db, "users", user!.uid, "orders"));
 
       transaction.set(orderRef, {
@@ -137,11 +137,11 @@ const handlePurchase = async () => {
         })),
       });
 
-      // --- 5) WYCZYŚĆ KOSZYK
+      // Czyszczenie koszyka
       transaction.update(cartRef, { items: [] });
     });
 
-    setMessage("🟢 Zamówienie zostało złożone pomyślnie!");
+    setMessage("Zamówienie zostało złożone pomyślnie!");
     setTimeout(() => navigate("/orders"), 1200);
 
   } catch (err: any) {
@@ -152,7 +152,7 @@ const handlePurchase = async () => {
     } else if (err.message === "EMPTY_CART") {
       setMessage("Twój koszyk jest pusty.");
     } else {
-      setMessage("❌ Wystąpił błąd podczas składania zamówienia.");
+      setMessage("Wystąpił błąd podczas składania zamówienia.");
     }
   }
 };
@@ -162,7 +162,6 @@ const handlePurchase = async () => {
     <div className="max-w-4xl mx-auto p-8">
       <h1 className="text-3xl font-bold text-purple-700 mb-6">Podsumowanie zamówienia</h1>
 
-      {/* Lista produktów */}
       <div className="bg-white shadow rounded-xl p-6 mb-8">
         {items.map((item) => (
           <div
@@ -183,20 +182,17 @@ const handlePurchase = async () => {
         ))}
       </div>
 
-      {/* Suma */}
       <div className="bg-gray-100 rounded-xl p-6 text-xl font-semibold text-gray-900">
         Razem:{" "}
         <span className="text-purple-700">{total.toFixed(2)} zł</span>
       </div>
 
-      {/* Komunikat */}
       {message && (
         <p className="mt-4 text-center text-lg font-medium text-purple-700">
           {message}
         </p>
       )}
 
-      {/* Przycisk płatności */}
       <button
         onClick={handlePurchase}
         className="mt-8 w-full px-8 py-4 bg-green-600 text-white rounded-xl font-semibold text-lg shadow-lg hover:bg-green-700 transition"

@@ -55,7 +55,7 @@ const EmployeeOrders = () => {
 
         setOrders(list);
       } catch (err) {
-        console.error("❌ Błąd pobierania zamówień:", err);
+        console.error("Błąd pobierania zamówień:", err);
       } finally {
         setLoading(false);
       }
@@ -70,7 +70,7 @@ const EmployeeOrders = () => {
       await deleteDoc(ref);
       setOrders((prev) => prev.filter((o) => o.id !== order.id));
     } catch (err) {
-      console.error("❌ Błąd usuwania zamówienia:", err);
+      console.error("Błąd usuwania zamówienia:", err);
     }
   };
 

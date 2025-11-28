@@ -24,7 +24,6 @@ const Login = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
-  // pełna struktura adresu — Opcja A
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
@@ -34,7 +33,6 @@ const Login = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [message, setMessage] = useState("");
 
-  // ✓ info po powrocie z resetu hasła
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get("reset") === "1") {
@@ -42,7 +40,6 @@ const Login = () => {
     }
   }, [location.search]);
 
-  // Jeśli zalogowany → nie pokazujemy formularza
   if (user) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center bg-gray-50">
@@ -62,13 +59,11 @@ const Login = () => {
     );
   }
 
-  // 🔐 logowanie / rejestracja
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
       if (isRegister) {
-        // utwórz konto
         const userCredential = await createUserWithEmailAndPassword(
           auth,
           email,
@@ -77,7 +72,6 @@ const Login = () => {
 
         const newUser = userCredential.user;
 
-        // 🧩 pełny model usera zgodny z Firestore
         const userData = {
           email: newUser.email,
           firstName,
@@ -93,20 +87,16 @@ const Login = () => {
           },
         };
 
-        // Zapis usera
         await setDoc(doc(db, "users", newUser.uid), userData);
 
-        // 🔥 Automatycznie tworzony koszyk
         await setDoc(doc(db, "users", newUser.uid, "cart", "cart"), {
           items: [],
         });
 
-        // przekierowanie po rejestracji
         navigate("/");
         return;
       }
-
-      // normalne logowanie
+ // logowanie
       await signInWithEmailAndPassword(auth, email, password);
       setMessage("Zalogowano pomyślnie!");
       setTimeout(() => navigate("/"), 500);
@@ -123,7 +113,6 @@ const Login = () => {
         </h2>
 
         <form onSubmit={handleAuth} className="flex flex-col gap-4">
-          {/* Formularz rejestracji */}
           {isRegister && (
             <>
               <input
@@ -143,7 +132,6 @@ const Login = () => {
                 className="border border-gray-300 rounded px-3 py-2"
               />
 
-              {/* pełny adres */}
               <input
                 type="text"
                 placeholder="Ulica i numer"
@@ -187,7 +175,6 @@ const Login = () => {
             </>
           )}
 
-          {/* pola wspólne */}
           <input
             type="email"
             placeholder="Adres e-mail"
@@ -214,7 +201,6 @@ const Login = () => {
           </button>
         </form>
 
-        {/* reset hasła */}
         {!isRegister && (
           <div className="text-center mt-3">
             <Link
@@ -226,7 +212,6 @@ const Login = () => {
           </div>
         )}
 
-        {/* komunikaty */}
         {message && (
           <p
             className={`text-center text-sm mt-4 ${
@@ -237,7 +222,6 @@ const Login = () => {
           </p>
         )}
 
-        {/* przełącznik login <-> register */}
         <p
           onClick={() => {
             setIsRegister(!isRegister);

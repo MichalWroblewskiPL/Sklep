@@ -14,7 +14,6 @@ const Home = () => {
   const [products, setProducts] = useState<ProductDoc[]>([]);
   const [loadingCats, setLoadingCats] = useState(true);
 
-  // Pobierz produkty, żeby wyliczyć kategorie dynamicznie
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -30,10 +29,8 @@ const Home = () => {
     fetchProducts();
   }, []);
 
-  // Wylicz kategorie z danych (unikalne)
   const categories = useMemo(() => {
     const map = new Map<string, string | undefined>();
-    // weź pierwsze napotkane zdjęcie z produktu danej kategorii (opcjonalnie)
     for (const p of products) {
       const cat = (p.category || "").trim();
       if (!cat) continue;
@@ -41,7 +38,7 @@ const Home = () => {
         map.set(cat, p.mainImageUrl);
       }
     }
-    // jeśli nie ma nic w bazie, pokaż 3 fallbacki jak wcześniej
+
     if (map.size === 0) {
       return [
         { name: "Akcesoria komputerowe", img: "https://source.unsplash.com/600x400/?computer,accessory" },
@@ -61,7 +58,6 @@ const Home = () => {
 
   return (
     <div className="font-sans text-gray-900 bg-gray-50">
-      {/* HERO */}
       <section className="bg-gradient-to-r from-purple-700 to-green-500 text-white py-24 px-6 flex flex-col items-center text-center shadow-inner">
         <h1 className="text-6xl font-extrabold mb-4 tracking-tight">
           Pc<span className="text-green-300">Base</span>
@@ -78,7 +74,6 @@ const Home = () => {
         </Link>
       </section>
 
-      {/* KATEGORIE (dynamiczne) */}
       <section className="py-20 px-8 bg-gray-50">
         <h2 className="text-3xl font-bold text-center mb-12 text-gray-800">
           Kategorie produktów
@@ -113,7 +108,6 @@ const Home = () => {
         )}
       </section>
 
-      {/* CTA */}
       <section className="py-20 bg-purple-700 text-white text-center">
         <h2 className="text-3xl font-bold mb-6">Dołącz do PcBase już dziś</h2>
         <p className="text-lg mb-8 max-w-xl mx-auto text-gray-200">

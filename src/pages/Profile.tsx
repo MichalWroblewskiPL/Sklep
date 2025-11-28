@@ -29,14 +29,12 @@ const Profile = () => {
   const [editing, setEditing] = useState(false);
   const [message, setMessage] = useState("");
 
-  // hasło
   const [showPasswordBox, setShowPasswordBox] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
   const [pwdMessage, setPwdMessage] = useState("");
 
-  // pobierz dane użytkownika
   useEffect(() => {
     const fetchUserData = async () => {
       if (!user) return;
@@ -83,12 +81,11 @@ const Profile = () => {
       </div>
     );
 
-  // obsługa zmian inputów
   const handleChange = (e: any) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // zapis danych
+
   const handleSave = async () => {
     try {
       const ref = doc(db, "users", user.uid);
@@ -110,22 +107,21 @@ const Profile = () => {
         await updateEmail(auth.currentUser, formData.email);
 
       setEditing(false);
-      setMessage("✅ Dane zaktualizowane!");
+      setMessage("Dane zaktualizowane!");
     } catch (err) {
       console.error(err);
-      setMessage("❌ Błąd zapisu");
+      setMessage("Błąd zapisu");
     }
   };
 
-  // zmiana hasła
   const handleChangePassword = async () => {
     setPwdMessage("");
 
     if (newPassword !== newPasswordConfirm)
-      return setPwdMessage("❌ Hasła nie są identyczne");
+      return setPwdMessage("Hasła nie są identyczne");
 
     if (newPassword.length < 6)
-      return setPwdMessage("❌ Minimum 6 znaków");
+      return setPwdMessage("Minimum 6 znaków");
 
     try {
       const credential = EmailAuthProvider.credential(
@@ -136,11 +132,11 @@ const Profile = () => {
       await reauthenticateWithCredential(auth.currentUser!, credential);
       await updatePassword(auth.currentUser!, newPassword);
 
-      setPwdMessage("✅ Hasło zostało zmienione");
+      setPwdMessage("Hasło zostało zmienione");
       setShowPasswordBox(false);
     } catch (err: any) {
       console.error(err);
-      setPwdMessage("❌ Błąd zmiany hasła");
+      setPwdMessage("Błąd zmiany hasła");
     }
   };
 
@@ -148,10 +144,10 @@ const Profile = () => {
   const handleSendResetLink = async () => {
     try {
       await sendPasswordResetEmail(auth, formData.email);
-      setPwdMessage("📩 Link wysłany na e-mail");
+      setPwdMessage("Link wysłany na e-mail");
     } catch (err) {
       console.error(err);
-      setPwdMessage("❌ Błąd wysyłania linku");
+      setPwdMessage("Błąd wysyłania linku");
     }
   };
 
@@ -159,7 +155,6 @@ const Profile = () => {
     <div className="min-h-[80vh] bg-gray-50 px-4 py-10 flex justify-center">
       <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        {/* KAFEL 1 — Dane użytkownika */}
         <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Dane osobowe
@@ -227,7 +222,6 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* KAFEL 2 — Adres dostawy */}
         <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Adres dostawy
@@ -281,7 +275,6 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* KAFEL 3 — Zamówienia */}
         <Link
           to="/orders"
           className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition cursor-pointer flex flex-col justify-center items-center"
@@ -294,7 +287,6 @@ const Profile = () => {
           </p>
         </Link>
 
-        {/* KAFEL 4 — Zmiana hasła */}
         <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Bezpieczeństwo konta
@@ -336,7 +328,7 @@ const Profile = () => {
               {pwdMessage && (
                 <p
                   className={`text-sm text-center ${
-                    pwdMessage.startsWith("✅")
+                    pwdMessage.toLowerCase().includes("błąd")
                       ? "text-green-600"
                       : "text-red-600"
                   }`}

@@ -3,6 +3,7 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebase";
 import { Link } from "react-router-dom";
 
+
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string>("");
@@ -12,14 +13,13 @@ const ForgotPassword = () => {
     setMessage("");
 
     try {
-      // Ustawienia akcji – po zakończeniu resetu wrócisz do /login z komunikatem
       const actionCodeSettings = {
-        url: "http://localhost:5173/login?reset=1",
+        url: `${window.location.origin}/login?reset=1`,
         handleCodeInApp: false,
       };
 
       await sendPasswordResetEmail(auth, email, actionCodeSettings);
-      setMessage("📩 Wysłaliśmy mail z linkiem do resetu hasła. Sprawdź skrzynkę.");
+      setMessage("Wysłaliśmy mail z linkiem do resetu hasła. Sprawdź swoją skrzynkę.");
     } catch (err: any) {
       setMessage(`Błąd: ${err?.message || "nie udało się wysłać maila."}`);
     }
@@ -52,7 +52,7 @@ const ForgotPassword = () => {
         {message && (
           <p
             className={`text-center text-sm mt-4 ${
-              message.startsWith("📩") ? "text-green-600" : "text-red-600"
+              message.includes("Wysłaliśmy mail") ? "text-green-600" : "text-red-600"
             }`}
           >
             {message}

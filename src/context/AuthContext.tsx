@@ -44,18 +44,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         try {
-          // 🔥 POBIERAMY CUSTOM CLAIMS — TU JEST PRAWDZIWA ROLA
+          // Rola z custom claims
           const tokenResult = await firebaseUser.getIdTokenResult();
           const claimRole = tokenResult.claims.role;
 
-          // 🔥 POBIERAMY DANE Z FIRESTORE
+          // Dane z Firestore
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
 
           let firestoreData: any = userDoc.exists() ? userDoc.data() : {};
 
           const selectedRole =
-            claimRole || firestoreData.role || "user"; // priorytet: TOKEN → FIRESTORE → user
+            claimRole || firestoreData.role || "user";
 
           setUser({
             uid: firebaseUser.uid,
@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (err) {
           console.error("Błąd pobierania danych użytkownika:", err);
 
-          // fallback — minimalny user
+          // minimalny user
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,

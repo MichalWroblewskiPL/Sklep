@@ -7,7 +7,7 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 interface Product {
   id: string;
   name: string;
-  price?: number;          // w bazie masz price (number)
+  price?: number; 
   category?: string;
   stockQuantity?: number;
   mainImageUrl?: string;
@@ -42,14 +42,12 @@ const Shop = () => {
     fetchProducts();
   }, []);
 
-  // Ustaw kategorię z query param (np. /shop?category=Klawiatury)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const cat = params.get("category");
     if (cat) setFilteredCategory(cat);
   }, [location.search]);
 
-  // Kategorie dynamicznie z danych
   const categories = useMemo(() => {
     const set = new Set<string>(["Wszystkie"]);
     products.forEach((p) => p.category && set.add(p.category));
@@ -79,7 +77,6 @@ const Shop = () => {
         Nasze produkty
       </h1>
 
-      {/* Filtry kategorii (dynamiczne) */}
       <div className="flex justify-center gap-4 mb-10 flex-wrap">
         {categories.map((cat) => (
           <button
@@ -96,7 +93,6 @@ const Shop = () => {
         ))}
       </div>
 
-      {/* Lista produktów */}
       {loading ? (
         <p className="text-center text-gray-600">Ładowanie produktów...</p>
       ) : filteredProducts.length > 0 ? (

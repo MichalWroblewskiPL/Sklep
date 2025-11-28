@@ -28,7 +28,7 @@ interface OrderData {
 const EmployeeOrderDetails = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { userId, orderId } = useParams(); // 👈 POBIERAMY userId i orderId z URL-a
+  const { userId, orderId } = useParams();
 
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,7 +119,6 @@ const EmployeeOrderDetails = () => {
           <span className="font-bold text-purple-600">{order.status}</span>
         </p>
 
-        {/* 🔽 ZMIANA STATUSU */}
         <div className="mt-4">
           <label className="text-sm mr-2 text-gray-700">Zmień status:</label>
           <select
@@ -134,7 +133,6 @@ const EmployeeOrderDetails = () => {
           </select>
         </div>
 
-        {/* 🔽 ADRES DOSTAWY */}
         {order.deliveryAddress && (
           <div className="mt-6 bg-gray-100 rounded p-4">
             <h3 className="text-lg font-semibold mb-2">Adres dostawy</h3>
@@ -147,7 +145,6 @@ const EmployeeOrderDetails = () => {
           </div>
         )}
 
-        {/* 🔽 LISTA PRODUKTÓW */}
         <h3 className="text-xl font-semibold mt-6 mb-2">Pozycje:</h3>
         <div className="flex flex-col gap-4">
           {order.items.map((item, idx) => (
@@ -172,12 +169,10 @@ const EmployeeOrderDetails = () => {
           Razem: {order.totalValue.toFixed(2)} zł
         </p>
 
-        {/* 🔽 KOMUNIKAT */}
         {msg && (
           <p className="mt-4 text-center text-purple-700 font-medium">{msg}</p>
         )}
 
-        {/* 🔽 PRZYCISKI */}
         <div className="flex justify-between mt-8">
           <button
             onClick={() => navigate("/employee/orders")}

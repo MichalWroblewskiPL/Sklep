@@ -65,7 +65,7 @@ const EmployeeDashboard = () => {
         Panel pracownika
       </h1>
 
-      {/* ================= USERS ================= */}
+      {/* USERS */}
       <div className="bg-white shadow rounded-xl p-6 border border-gray-200 mb-10">
         <h2 className="text-xl font-semibold mb-4">Zarządzanie użytkownikami</h2>
 
@@ -117,7 +117,7 @@ const EmployeeDashboard = () => {
         </table>
       </div>
 
-      {/* ================= PRODUCTS ================= */}
+      {/* PRODUCTS */}
       <div className="bg-white shadow rounded-xl p-6 border border-gray-200 mb-10">
         <h2 className="text-xl font-semibold mb-3">Zarządzanie produktami</h2>
         <p className="text-sm text-gray-600 mb-4">
@@ -131,7 +131,7 @@ const EmployeeDashboard = () => {
         </button>
       </div>
 
-      {/* ================= ORDERS ================= */}
+      {/* ORDERS */}
       <div className="bg-white shadow rounded-xl p-6 border border-gray-200">
         <h2 className="text-xl font-semibold mb-3">Zarządzanie zamówieniami</h2>
         <p className="text-sm text-gray-600 mb-4">

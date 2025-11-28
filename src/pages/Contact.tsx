@@ -27,7 +27,7 @@ const ContactPage = () => {
         onClick={handleCopy}
         className="bg-purple-700 text-white px-6 py-3 rounded-lg hover:bg-purple-800 transition"
       >
-        📋 Skopiuj adres e-mail
+        Skopiuj adres e-mail
       </button>
 
       {copied && (
