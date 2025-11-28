@@ -28,10 +28,7 @@ interface OrderData {
 const EmployeeOrderDetails = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { orderId } = useParams();
-
-  // orderId = "userId_orderId"
-  const [uid, oid] = orderId?.split("_") ?? [];
+  const { userId, orderId } = useParams(); // 👈 POBIERAMY userId i orderId z URL-a
 
   const [order, setOrder] = useState<OrderData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +44,8 @@ const EmployeeOrderDetails = () => {
 
     const load = async () => {
       try {
-        const ref = doc(db, "users", uid, "orders", oid);
+        if (!userId || !orderId) return;
+        const ref = doc(db, "users", userId, "orders", orderId);
         const snap = await getDoc(ref);
 
         if (snap.exists()) {
@@ -61,11 +59,11 @@ const EmployeeOrderDetails = () => {
     };
 
     load();
-  }, [user, uid, oid]);
+  }, [user, userId, orderId]);
 
   const updateStatus = async (newStatus: string) => {
     try {
-      const ref = doc(db, "users", uid, "orders", oid);
+      const ref = doc(db, "users", userId!, "orders", orderId!);
       await updateDoc(ref, { status: newStatus });
       setOrder((prev) => prev && { ...prev, status: newStatus });
       setMsg("Zaktualizowano status");
@@ -79,7 +77,7 @@ const EmployeeOrderDetails = () => {
     if (!window.confirm("Czy na pewno chcesz usunąć zamówienie?")) return;
 
     try {
-      await deleteDoc(doc(db, "users", uid, "orders", oid));
+      await deleteDoc(doc(db, "users", userId!, "orders", orderId!));
       navigate("/employee/orders");
     } catch (err) {
       console.error(err);
@@ -106,10 +104,10 @@ const EmployeeOrderDetails = () => {
       </h1>
 
       <div className="bg-white shadow rounded-xl p-6 border border-gray-200">
-        <h2 className="text-2xl font-semibold mb-2">Zamówienie #{oid}</h2>
+        <h2 className="text-2xl font-semibold mb-2">Zamówienie #{orderId}</h2>
 
         <p className="text-gray-600 text-sm">
-          Użytkownik: <span className="font-semibold">{uid}</span>
+          Użytkownik: <span className="font-semibold">{userId}</span>
         </p>
 
         <p className="text-gray-600 text-sm">

@@ -17,6 +17,8 @@ import OrdersPage from "./pages/OrdersPage";
 import OrderDetails from "./pages/OrderDetails";
 import EmployeeOrders from "./pages/EmployeeOrders";
 import EmployeeOrderDetails from "./pages/EmployeeOrderDetails";
+import EmployeeUserEdit from "./pages/EmployeeUserEdit";
+import Contact from "./pages/Contact";
 
 
 
@@ -43,7 +45,9 @@ const App = () => {
               <Route path="/orders" element={<OrdersPage />} />
               <Route path="/order/:id" element={<OrderDetails />} />
               <Route path="/employee/orders" element={<EmployeeOrders />} />
-              <Route path="/employee/orders/:orderId" element={<EmployeeOrderDetails />} />
+              <Route path="/employee/orders/:userId/:orderId" element={<EmployeeOrderDetails />} />
+              <Route path="/employee/users/:uid/edit" element={<EmployeeUserEdit />} />
+              <Route path="/contact" element={<Contact />} />
             </Routes>
           </main>
           <Footer />
