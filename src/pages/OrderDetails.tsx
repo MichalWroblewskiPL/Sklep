@@ -4,134 +4,126 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 
-interface OrderItem {
-  productId: string;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-}
+const paymentLabel = (method: string) => {
+  if (method === "gotowka") return "Gotówka";
+  if (method === "karta") return "Karta";
+  return "–";
+};
 
-interface OrderData {
-  createdAt: any;
-  totalValue: number;
-  status: string;
-  items: OrderItem[];
-}
+const shippingLabel = (method: string) => {
+  if (method === "kurier") return "Kurier";
+  if (method === "odbior") return "Odbiór osobisty";
+  return "–";
+};
 
 const OrderDetails = () => {
-  const { id } = useParams();
+  const { orderId } = useParams();
   const { user } = useAuth();
-
-  const [order, setOrder] = useState<OrderData | null>(null);
+  const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || !id) return;
+    const fetchOrder = async () => {
+      if (!user || !orderId) return;
 
-    const loadOrder = async () => {
       try {
-        const ref = doc(db, "users", user.uid, "orders", id);
+        const ref = doc(db, "users", user.uid, "orders", orderId);
         const snap = await getDoc(ref);
 
         if (snap.exists()) {
-          setOrder(snap.data() as OrderData);
-        } else {
-          setOrder(null);
+          setOrder(snap.data());
         }
-      } catch (e) {
-        console.error("Błąd pobierania zamówienia:", e);
       } finally {
         setLoading(false);
       }
     };
 
-    loadOrder();
-  }, [user, id]);
-
-  if (!user) {
-    return (
-      <div className="p-10 text-center text-gray-600">
-        Musisz być zalogowany, aby zobaczyć zamówienie.
-      </div>
-    );
-  }
+    fetchOrder();
+  }, [user, orderId]);
 
   if (loading) {
-    return (
-      <div className="p-10 text-center text-gray-600">Ładowanie zamówienia...</div>
-    );
+    return <p className="text-center mt-10">Ładowanie…</p>;
   }
 
   if (!order) {
     return (
-      <div className="p-10 text-center text-gray-600">
+      <p className="text-center mt-10 text-red-600">
         Nie znaleziono zamówienia.
-      </div>
+      </p>
     );
   }
 
-  const createdDate = order.createdAt?.toDate
-    ? order.createdAt.toDate().toLocaleString()
-    : "Brak danych";
-
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <Link to="/orders" className="text-purple-600 hover:underline">
-        ← Powrót do zamówień
-      </Link>
-
-      <h1 className="text-3xl font-bold mt-6 mb-4 text-purple-700">
-        Zamówienie #{id}
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">
+        Szczegóły zamówienia
       </h1>
 
-      <div className="bg-white shadow rounded-xl p-6 mb-8">
-        <p className="text-gray-700 mb-2">
-          <strong>Data zamówienia:</strong> {createdDate}
+      <div className="mb-6 space-y-1">
+        <p>
+          <strong>ID zamówienia:</strong> {orderId}
+        </p>
+        <p>
+          <strong>Status:</strong> {order.status}
+        </p>
+        <p>
+          <strong>Dostawa:</strong>{" "}
+          {shippingLabel(order.shippingMethod)}
+        </p>
+        <p>
+          <strong>Płatność:</strong>{" "}
+          {paymentLabel(order.paymentMethod)}
         </p>
 
-        <p className="text-gray-700 mb-2">
-          <strong>Status:</strong>{" "}
-          <span className="text-purple-700">{order.status}</span>
-        </p>
-
-        <p className="text-gray-700 text-lg font-semibold mt-4">
-          Suma:{" "}
-          <span className="text-purple-700">
-            {order.totalValue.toFixed(2)} zł
-          </span>
-        </p>
-      </div>
-
-      <h2 className="text-2xl font-bold mb-4 text-gray-900">Pozycje:</h2>
-
-      <div className="bg-white shadow rounded-xl p-6">
-        {order.items.map((item, index) => (
-          <div
-            key={index}
-            className="flex items-center justify-between border-b py-4"
-          >
-            <div>
-              <p className="text-lg font-semibold text-gray-900">
-                {item.productName}
+        {order.shippingMethod === "kurier" &&
+          order.deliveryAddress && (
+            <div className="mt-3">
+              <p className="font-semibold">Adres dostawy:</p>
+              <p>{order.deliveryAddress.street}</p>
+              <p>
+                {order.deliveryAddress.postalCode}{" "}
+                {order.deliveryAddress.city}
               </p>
-              <p className="text-sm text-gray-600">
-                {item.quantity} × {item.unitPrice.toFixed(2)} zł
-              </p>
+              <p>{order.deliveryAddress.country}</p>
+              <p>Telefon: {order.deliveryAddress.phone}</p>
             </div>
+          )}
+      </div>
 
-            <p className="text-lg font-bold text-purple-700">
-              {(item.quantity * item.unitPrice).toFixed(2)} zł
-            </p>
-          </div>
+      <h2 className="text-xl font-semibold mb-3">
+        Produkty
+      </h2>
+
+      <ul className="space-y-3">
+        {order.items.map((item: any, idx: number) => (
+          <li
+            key={idx}
+            className="border rounded p-3 flex gap-4"
+          >
+            <img
+              src={item.mainImageUrl}
+              alt={item.name}
+              className="w-20 h-20 object-cover rounded"
+            />
+            <div>
+              <p className="font-semibold">{item.name}</p>
+              <p>Ilość: {item.quantity}</p>
+              <p>Cena: {item.price} zł</p>
+            </div>
+          </li>
         ))}
-      </div>
+      </ul>
 
-      <div className="bg-gray-100 rounded-xl p-6 text-xl font-semibold text-gray-900 mt-8">
-        Razem:{" "}
-        <span className="text-purple-700">
-          {order.totalValue.toFixed(2)} zł
-        </span>
-      </div>
+      <p className="mt-4 text-lg font-bold">
+        Łączna kwota: {order.totalValue} zł
+      </p>
+
+      <Link
+        to="/orders"
+        className="inline-block mt-6 text-purple-600 hover:underline"
+      >
+        ← Powrót do zamówień
+      </Link>
     </div>
   );
 };

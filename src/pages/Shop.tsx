@@ -3,53 +3,46 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 
-
 interface Product {
   id: string;
   name: string;
-  price?: number; 
+  price?: number;
   category?: string;
-  stockQuantity?: number;
   mainImageUrl?: string;
   description?: string;
 }
+
+const ITEMS_PER_PAGE = 6;
 
 const Shop = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [filteredCategory, setFilteredCategory] = useState<string>("Wszystkie");
+  const [filteredCategory, setFilteredCategory] = useState("Wszystkie");
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
-  // Pobierz produkty z Firestore
   useEffect(() => {
     const fetchProducts = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, "products"));
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Product[];
-        setProducts(data);
-      } catch (error) {
-        console.error("Błąd podczas pobierania produktów:", error);
-      } finally {
-        setLoading(false);
-      }
+      const snap = await getDocs(collection(db, "products"));
+      setProducts(
+        snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Product[]
+      );
+      setLoading(false);
     };
-
     fetchProducts();
   }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const cat = params.get("category");
-    if (cat) setFilteredCategory(cat);
+    setFilteredCategory(cat || "Wszystkie");
+    setPage(1);
   }, [location.search]);
 
   const categories = useMemo(() => {
-    const set = new Set<string>(["Wszystkie"]);
+    const set = new Set(["Wszystkie"]);
     products.forEach((p) => p.category && set.add(p.category));
     return Array.from(set);
   }, [products]);
@@ -59,31 +52,34 @@ const Shop = () => {
       ? products
       : products.filter((p) => p.category === filteredCategory);
 
-  const handleCategoryClick = (cat: string) => {
-    setFilteredCategory(cat);
-    if (cat === "Wszystkie") {
-      navigate("/shop", { replace: true });
-    } else {
-      navigate(`/shop?category=${encodeURIComponent(cat)}`, { replace: true });
-    }
-  };
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
 
+  const paginatedProducts = filteredProducts.slice(
+    (page - 1) * ITEMS_PER_PAGE,
+    page * ITEMS_PER_PAGE
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 py-16 px-6">
+    <div className="bg-gray-50 py-16 px-6">
       <h1 className="text-4xl font-bold text-center text-purple-700 mb-10">
-        Nasze produkty
+        Produkty
       </h1>
 
       <div className="flex justify-center gap-4 mb-10 flex-wrap">
         {categories.map((cat) => (
           <button
             key={cat}
-            onClick={() => handleCategoryClick(cat)}
-            className={`px-5 py-2 rounded-full font-medium transition ${
+            onClick={() =>
+              navigate(
+                cat === "Wszystkie"
+                  ? "/shop"
+                  : `/shop?category=${encodeURIComponent(cat)}`
+              )
+            }
+            className={`px-5 py-2 rounded-full ${
               filteredCategory === cat
-                ? "bg-purple-700 text-white shadow"
-                : "bg-white text-purple-700 border border-purple-300 hover:bg-purple-50"
+                ? "bg-purple-700 text-white"
+                : "bg-white border text-purple-700"
             }`}
           >
             {cat}
@@ -92,34 +88,53 @@ const Shop = () => {
       </div>
 
       {loading ? (
-        <p className="text-center text-gray-600">Ładowanie produktów...</p>
-      ) : filteredProducts.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {filteredProducts.map((product) => (
-            <Link
-              to={`/product/${product.id}`}
-              className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition block">
-              <img
-                src={product.mainImageUrl}
-                alt={product.name}
-                className="w-full h-48 object-cover"
-              />
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{product.name}</h3>
-                <p className="text-sm text-gray-600 mb-4 line-clamp-3">
-                  {product.description}
-                </p>
-                <p className="text-lg font-bold text-purple-700">
-                  {product.price ? `${product.price.toFixed(2)} zł` : "—"}
-                </p>
-            </div>
-            </Link>
-          ))}
-        </div>
+        <p className="text-center">Ładowanie…</p>
       ) : (
-        <p className="text-center text-gray-600">
-          Brak produktów w tej kategorii.
-        </p>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {paginatedProducts.map((p) => (
+              <Link
+                key={p.id}
+                to={`/product/${p.id}`}
+                className="bg-white rounded-xl shadow hover:shadow-lg"
+              >
+                <img
+                  src={p.mainImageUrl}
+                  alt={p.name}
+                  className="h-48 w-full object-cover rounded-t-xl"
+                />
+                <div className="p-6">
+                  <h3 className="font-semibold mb-2">{p.name}</h3>
+                  <p className="text-purple-700 font-bold">
+                    {p.price?.toFixed(2)} zł
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-4 mt-10">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+                className="px-4 py-2 border rounded disabled:opacity-40"
+              >
+                Poprzednia
+              </button>
+              <span className="self-center">
+                {page} / {totalPages}
+              </span>
+              <button
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className="px-4 py-2 border rounded disabled:opacity-40"
+              >
+                Następna
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

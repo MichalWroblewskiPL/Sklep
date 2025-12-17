@@ -1,201 +1,321 @@
 import { useEffect, useState } from "react";
-import { db } from "../firebase";
+import { useNavigate } from "react-router-dom";
 import {
+  collection,
   doc,
   getDoc,
   runTransaction,
-  collection,
   serverTimestamp,
 } from "firebase/firestore";
-import { useNavigate } from "react-router-dom";
+import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 
-interface CartItem {
+type CartItem = {
   productId: string;
   name: string;
   price: number;
   quantity: number;
   mainImageUrl: string;
-}
+};
+
+const ValidationRules = {
+  street: {
+    validate: (v: string) => v.length >= 3 && v.length <= 100,
+    message: "Ulica: 3–100 znaków",
+  },
+  city: {
+    pattern: /^[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ\s-]{2,50}$/,
+    message: "Miasto: 2–50 znaków, tylko litery",
+  },
+  postalCode: {
+    pattern: /^\d{2}-\d{3}$/,
+    message: "Kod pocztowy: format XX-XXX",
+  },
+  country: {
+    validate: (v: string) => v.length >= 2 && v.length <= 50,
+    message: "Kraj: 2–50 znaków",
+  },
+  phone: {
+    pattern: /^(\+48)?[0-9]{9}$/,
+    message: "Telefon: 9 cyfr lub +48 i 9 cyfr",
+  },
+};
 
 const CheckoutPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+
+  const [shippingMethod, setShippingMethod] =
+    useState<"odbior" | "kurier">("odbior");
+
+  const [paymentMethod, setPaymentMethod] =
+    useState<"gotowka" | "karta" | "">("");
+
+  const [useProfileAddress, setUseProfileAddress] = useState(true);
+
+  const [address, setAddress] = useState({
+    street: "",
+    city: "",
+    postalCode: "",
+    country: "",
+    phone: "",
+  });
+
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!user) return;
-
     const loadCart = async () => {
-      try {
-        const cartRef = doc(db, "users", user.uid, "cart", "cart");
-        const snap = await getDoc(cartRef);
+      if (!user) return;
 
-        if (snap.exists()) {
-          setItems(snap.data().items || []);
-        }
-      } catch (err) {
-        console.error("Błąd ładowania koszyka:", err);
-      } finally {
-        setLoading(false);
+      const cartRef = doc(db, "users", user.uid, "cart", "cart");
+      const snap = await getDoc(cartRef);
+      if (snap.exists()) {
+        setCartItems(snap.data().items || []);
       }
+      setLoading(false);
     };
 
     loadCart();
   }, [user]);
 
-  if (!user) {
-    return (
-      <div className="p-10 text-center text-gray-700">
-        Musisz być zalogowany, aby złożyć zamówienie.
-      </div>
-    );
-  }
+  useEffect(() => {
+    const loadProfileAddress = async () => {
+      if (!user || !useProfileAddress || shippingMethod !== "kurier") return;
 
-  if (loading) {
-    return (
-      <div className="p-10 text-center text-gray-600">
-        Ładowanie koszyka...
-      </div>
-    );
-  }
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+      const a = snap.data()?.address || {};
 
-  if (items.length === 0) {
-    return (
-      <div className="p-10 text-center text-gray-700">
-        Twój koszyk jest pusty.
-      </div>
-    );
-  }
+      setAddress({
+        street: a.street || "",
+        city: a.city || "",
+        postalCode: a.postalCode || "",
+        country: a.country || "",
+        phone: a.phone || "",
+      });
+    };
 
-  const total = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    loadProfileAddress();
+  }, [user, useProfileAddress, shippingMethod]);
+
+  const totalValue = cartItems.reduce(
+    (s, i) => s + i.price * i.quantity,
     0
   );
 
-const handlePurchase = async () => {
-  setMessage("");
+  const validateAddress = () => {
+    const e: string[] = [];
+    if (!ValidationRules.street.validate(address.street))
+      e.push(ValidationRules.street.message);
+    if (!ValidationRules.city.pattern.test(address.city))
+      e.push(ValidationRules.city.message);
+    if (!ValidationRules.postalCode.pattern.test(address.postalCode))
+      e.push(ValidationRules.postalCode.message);
+    if (!ValidationRules.country.validate(address.country))
+      e.push(ValidationRules.country.message);
+    if (!ValidationRules.phone.pattern.test(address.phone))
+      e.push(ValidationRules.phone.message);
+    return e;
+  };
 
-  try {
-    await runTransaction(db, async (transaction) => {
+  const handleOrder = async () => {
+    setError("");
 
-      const cartRef = doc(db, "users", user!.uid, "cart", "cart");
-      const cartSnap = await transaction.get(cartRef);
+    if (!user || cartItems.length === 0) return;
 
-      if (!cartSnap.exists()) throw new Error("EMPTY_CART");
-
-      const cartItems: CartItem[] = cartSnap.data().items || [];
-      if (cartItems.length === 0) throw new Error("EMPTY_CART");
-
-      // Pobierz produkty
-      const productRefs = cartItems.map((item) =>
-        doc(db, "products", item.productId)
-      );
-
-      const productSnaps = await Promise.all(
-        productRefs.map((ref) => transaction.get(ref))
-      );
-
-      // Sprawdz stock
-      productSnaps.forEach((snap, i) => {
-        if (!snap.exists()) throw new Error("PRODUCT_NOT_FOUND");
-
-        const stock = snap.data().stockQuantity ?? 0;
-        const qty = cartItems[i].quantity;
-
-        if (stock < qty) throw new Error("NOT_ENOUGH_STOCK");
-      });
-
-      // Update stocka
-      productSnaps.forEach((snap, i) => {
-        const ref = productRefs[i];
-        const stock = snap.data()?.stockQuantity;
-        const qty = cartItems[i].quantity;
-
-        transaction.update(ref, {
-          stockQuantity: stock - qty,
-        });
-      });
-
-      // Nowe zamówienie
-      const orderRef = doc(collection(db, "users", user!.uid, "orders"));
-
-      transaction.set(orderRef, {
-        createdAt: serverTimestamp(),
-        totalValue: total,
-        status: "Oczekujące",
-        items: cartItems.map((i) => ({
-          productId: i.productId,
-          productName: i.name,
-          quantity: i.quantity,
-          unitPrice: i.price,
-        })),
-      });
-
-      // Czyszczenie koszyka
-      transaction.update(cartRef, { items: [] });
-    });
-
-    setMessage("Zamówienie zostało złożone pomyślnie!");
-    setTimeout(() => navigate("/orders"), 1200);
-
-  } catch (err: any) {
-    console.error(err);
-
-    if (err.message === "NOT_ENOUGH_STOCK") {
-      setMessage("Brakuje produktów na magazynie.");
-    } else if (err.message === "EMPTY_CART") {
-      setMessage("Twój koszyk jest pusty.");
-    } else {
-      setMessage("Wystąpił błąd podczas składania zamówienia.");
+    if (!paymentMethod) {
+      setError("Wybierz metodę płatności.");
+      return;
     }
-  }
-};
 
+    if (shippingMethod === "kurier") {
+      const errors = validateAddress();
+      if (errors.length) {
+        setError(errors.join(", "));
+        return;
+      }
+    }
+
+    try {
+      await runTransaction(db, async (tx) => {
+      const productSnapshots = [];
+
+     for (const item of cartItems) {
+        const ref = doc(db, "products", item.productId);
+        const snap = await tx.get(ref);
+
+        const stock = snap.data()?.stockQuantity || 0;
+        if (item.quantity > stock) {
+         throw new Error(`Brak w magazynie: ${item.name}`);
+       }
+
+        productSnapshots.push({
+          ref,
+         newStock: stock - item.quantity,
+        });
+     }
+
+     for (const p of productSnapshots) {
+       tx.update(p.ref, {
+          stockQuantity: p.newStock,
+    });
+    }
+
+  const orderRef = doc(collection(db, "users", user.uid, "orders"));
+
+  tx.set(orderRef, {
+    userId: user.uid,
+    items: cartItems,
+    totalValue,
+    status: "Oczekujące",
+    shippingMethod,
+    paymentMethod,
+    deliveryAddress: shippingMethod === "kurier" ? address : null,
+    createdAt: serverTimestamp(),
+  });
+
+  tx.update(doc(db, "users", user.uid, "cart", "cart"), {
+    items: [],
+  });
+});
+
+      navigate("/orders");
+    } catch (err: any) {
+      setError(err.message || "Błąd składania zamówienia.");
+    }
+  };
+
+  if (loading) {
+    return <p className="text-center mt-20">Ładowanie koszyka…</p>;
+  }
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <h1 className="text-3xl font-bold text-purple-700 mb-6">Podsumowanie zamówienia</h1>
+    <div className="max-w-4xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6 text-center">
+        Podsumowanie zamówienia
+      </h1>
 
-      <div className="bg-white shadow rounded-xl p-6 mb-8">
-        {items.map((item) => (
-          <div
-            key={item.productId}
-            className="flex items-center justify-between border-b py-4"
-          >
-            <div>
-              <p className="font-semibold text-gray-900">{item.name}</p>
+      <div className="bg-white shadow rounded-xl p-6 mb-6">
+        {cartItems.map((item) => (
+          <div key={item.productId} className="flex gap-4 mb-4">
+            <img
+              src={item.mainImageUrl}
+              alt={item.name}
+              className="w-20 h-20 rounded object-cover"
+            />
+            <div className="flex-1">
+              <p className="font-semibold">{item.name}</p>
               <p className="text-sm text-gray-600">
-                {item.quantity} × {item.price.toFixed(2)} zł
+                {item.quantity} × {item.price} zł
               </p>
             </div>
-
-            <p className="text-lg font-bold text-purple-700">
-              {(item.price * item.quantity).toFixed(2)} zł
+            <p className="font-semibold">
+              {item.quantity * item.price} zł
             </p>
           </div>
         ))}
+        <div className="text-right font-bold">
+          Razem: {totalValue} zł
+        </div>
       </div>
 
-      <div className="bg-gray-100 rounded-xl p-6 text-xl font-semibold text-gray-900">
-        Razem:{" "}
-        <span className="text-purple-700">{total.toFixed(2)} zł</span>
+      <div className="bg-white shadow rounded-xl p-6 mb-6">
+        <h2 className="font-semibold mb-4">Dostawa</h2>
+
+        <label className="block">
+          <input
+            type="radio"
+            checked={shippingMethod === "odbior"}
+            onChange={() => setShippingMethod("odbior")}
+          />{" "}
+          Odbiór osobisty
+        </label>
+
+        <label className="block mt-2">
+          <input
+            type="radio"
+            checked={shippingMethod === "kurier"}
+            onChange={() => setShippingMethod("kurier")}
+          />{" "}
+          Kurier
+        </label>
+
+        {shippingMethod === "kurier" && (
+          <div className="mt-4">
+            <label className="block mb-2">
+              <input
+                type="checkbox"
+                checked={useProfileAddress}
+                onChange={(e) =>
+                  setUseProfileAddress(e.target.checked)
+                }
+              />{" "}
+              Użyj danych z profilu
+            </label>
+
+            {(
+              [
+                ["street", "Ulica"],
+                ["postalCode", "Kod pocztowy"],
+                ["city", "Miasto"],
+                ["country", "Kraj"],
+                ["phone", "Telefon"],
+              ] as const
+            ).map(([key, label]) => (
+              <div key={key} className="mb-3">
+                <label className="block text-sm mb-1">{label}</label>
+                <input
+                  className="w-full px-4 py-2 border rounded"
+                  value={address[key]}
+                  onChange={(e) =>
+                    setAddress((p) => ({
+                      ...p,
+                      [key]: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {message && (
-        <p className="mt-4 text-center text-lg font-medium text-purple-700">
-          {message}
-        </p>
+      <div className="bg-white shadow rounded-xl p-6 mb-6">
+        <h2 className="font-semibold mb-4">
+          Płatność <span className="text-sm text-gray-500">(TYLKO przy odbiorze)</span>
+        </h2>
+
+        <label className="block">
+          <input
+            type="radio"
+            checked={paymentMethod === "gotowka"}
+            onChange={() => setPaymentMethod("gotowka")}
+          />{" "}
+          Gotówka
+        </label>
+
+        <label className="block mt-2">
+          <input
+            type="radio"
+            checked={paymentMethod === "karta"}
+            onChange={() => setPaymentMethod("karta")}
+          />{" "}
+          Karta
+        </label>
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-600 mb-4">{error}</p>
       )}
 
       <button
-        onClick={handlePurchase}
-        className="mt-8 w-full px-8 py-4 bg-green-600 text-white rounded-xl font-semibold text-lg shadow-lg hover:bg-green-700 transition"
+        onClick={handleOrder}
+        className="w-full bg-purple-700 text-white py-3 rounded font-semibold hover:bg-purple-800"
       >
-        Zapłać
+        Złóż zamówienie
       </button>
     </div>
   );

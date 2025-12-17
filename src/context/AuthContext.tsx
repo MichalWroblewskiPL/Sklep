@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { User as FirebaseUser } from "firebase/auth";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, Timestamp } from "firebase/firestore";
 
 type Address = {
   street: string;
@@ -20,6 +20,7 @@ export interface AppUser {
   firstName?: string;
   lastName?: string;
   address?: Address;
+  createdAt?: Timestamp;
 }
 
 interface AuthContextType {
@@ -44,23 +45,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         try {
-          // Rola z custom claims
           const tokenResult = await firebaseUser.getIdTokenResult();
           const claimRole = tokenResult.claims.role;
 
-          // Dane z Firestore
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
-
-          let firestoreData: any = userDoc.exists() ? userDoc.data() : {};
-
-          const selectedRole =
-            claimRole || firestoreData.role || "user";
+          const firestoreData = userDoc.exists() ? userDoc.data() : {};
 
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
-            role: selectedRole,
+            role: claimRole || firestoreData.role || "user",
             firstName: firestoreData.firstName || "",
             lastName: firestoreData.lastName || "",
             address: firestoreData.address || {
@@ -70,11 +65,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               country: "",
               phone: "",
             },
+            createdAt: firestoreData.createdAt || undefined,
           });
         } catch (err) {
           console.error("Błąd pobierania danych użytkownika:", err);
-
-          // minimalny user
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,

@@ -48,3 +48,8 @@ export const addToCart = async (uid: string, product: CartItem) => {
 
   await setDoc(cartRef, { items });
 };
+
+
+export const clearCartFromStorage = () => {
+  localStorage.removeItem("cart");
+};

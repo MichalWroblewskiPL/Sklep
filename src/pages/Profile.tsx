@@ -1,359 +1,323 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { db, auth } from "../firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { auth, db } from "../firebase";
 import {
-  updateEmail,
-  updatePassword,
-  reauthenticateWithCredential,
-  EmailAuthProvider,
   sendPasswordResetEmail,
+  deleteUser,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
 } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
+
+const ValidationRules = {
+  firstName: /^[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]{2,30}$/,
+  lastName: /^[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ-]{2,50}$/,
+
+  street: {
+    validate: (v: string) => v.length <= 100,
+    message: "Ulica: maksymalnie 100 znaków.",
+  },
+  city: {
+    pattern: /^[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ\s-]{2,50}$/,
+    message: "Miasto: 2–50 znaków, tylko litery.",
+  },
+  postalCode: {
+    pattern: /^\d{2}-\d{3}$/,
+    message: "Kod pocztowy: format XX-XXX.",
+  },
+  country: {
+    validate: (v: string) => v.length <= 50,
+    message: "Kraj: maksymalnie 50 znaków.",
+  },
+  phone: {
+    pattern: /^(\+48)?[0-9]{9}$/,
+    message: "Telefon: 9 cyfr lub +48 i 9 cyfr.",
+  },
+};
+
+type Errors = {
+  firstName?: string;
+  lastName?: string;
+  street?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  phone?: string;
+  general?: string;
+};
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    street: "",
-    city: "",
-    postalCode: "",
-    country: "",
-    phone: "",
+  const [form, setForm] = useState({
+    firstName: user?.firstName || "",
+    lastName: user?.lastName || "",
+    address: {
+      street: user?.address?.street || "",
+      postalCode: user?.address?.postalCode || "",
+      city: user?.address?.city || "",
+      country: user?.address?.country || "",
+      phone: user?.address?.phone || "",
+    },
   });
 
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [message, setMessage] = useState("");
-
-  const [showPasswordBox, setShowPasswordBox] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [errors, setErrors] = useState<Errors>({});
+  const [msg, setMsg] = useState("");
   const [pwdMessage, setPwdMessage] = useState("");
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user) return;
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
-      try {
-        const snap = await getDoc(doc(db, "users", user.uid));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
 
-        if (snap.exists()) {
-          const data = snap.data();
-          setFormData({
-            firstName: data.firstName || "",
-            lastName: data.lastName || "",
-            email: data.email || "",
-            street: data.address?.street || "",
-            city: data.address?.city || "",
-            postalCode: data.address?.postalCode || "",
-            country: data.address?.country || "",
-            phone: data.address?.phone || "",
-          });
-        }
-      } catch (err) {
-        console.error("Błąd pobierania profilu", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserData();
-  }, [user]);
-
-  if (!user)
-    return (
-      <div className="min-h-[60vh] flex justify-center items-center">
-        <h2 className="text-2xl text-purple-700 font-bold">
-          Musisz być zalogowany
-        </h2>
-      </div>
-    );
-
-  if (loading)
-    return (
-      <div className="min-h-[60vh] flex justify-center items-center text-gray-600">
-        Ładowanie profilu...
-      </div>
-    );
-
-  const handleChange = (e: any) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (name in form.address) {
+      setForm((p) => ({
+        ...p,
+        address: { ...p.address, [name]: value },
+      }));
+    } else {
+      setForm((p) => ({ ...p, [name]: value }));
+    }
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: Errors = {};
+
+    if (!ValidationRules.firstName.test(form.firstName)) {
+      newErrors.firstName = "Imię jest wymagane (2–30 znaków).";
+    }
+
+    if (!ValidationRules.lastName.test(form.lastName)) {
+      newErrors.lastName = "Nazwisko jest wymagane (2–50 znaków).";
+    }
+
+    for (const key in form.address) {
+      const value = form.address[key as keyof typeof form.address];
+      const rule = ValidationRules[key as keyof typeof ValidationRules] as any;
+
+      if (value && rule) {
+        if (
+          (rule.pattern && !rule.pattern.test(value)) ||
+          (rule.validate && !rule.validate(value))
+        ) {
+          newErrors[key as keyof Errors] = rule.message;
+        }
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSave = async () => {
+    setErrors({});
+    setMsg("");
+
+    if (!validateForm()) return;
+
     try {
-      const ref = doc(db, "users", user.uid);
-
-      await updateDoc(ref, {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        address: {
-          street: formData.street,
-          city: formData.city,
-          postalCode: formData.postalCode,
-          country: formData.country,
-          phone: formData.phone,
-        },
+      await updateDoc(doc(db, "users", user!.uid), {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        address: form.address,
       });
-
-      if (auth.currentUser && auth.currentUser.email !== formData.email)
-        await updateEmail(auth.currentUser, formData.email);
-
-      setEditing(false);
-      setMessage("Dane zaktualizowane!");
-    } catch (err) {
-      console.error(err);
-      setMessage("Błąd zapisu");
+      setMsg("Dane zostały zapisane.");
+    } catch {
+      setErrors({ general: "Błąd zapisu danych." });
     }
   };
 
-  const handleChangePassword = async () => {
-    setPwdMessage("");
+  const handlePasswordReset = async () => {
+    if (!user?.email) return;
+    try {
+      await sendPasswordResetEmail(auth, user.email);
+      setPwdMessage("Wysłano e-mail do resetu hasła.");
+    } catch {
+      setPwdMessage("Nie udało się wysłać wiadomości.");
+    }
+  };
 
-    if (newPassword !== newPasswordConfirm)
-      return setPwdMessage("Hasła nie są identyczne");
-
-    if (newPassword.length < 6)
-      return setPwdMessage("Minimum 6 znaków");
+  const confirmDeleteAccount = async () => {
+    setDeleteError("");
 
     try {
+      if (!deletePassword || !auth.currentUser?.email) return;
+
       const credential = EmailAuthProvider.credential(
-        auth.currentUser!.email!,
-        currentPassword
+        auth.currentUser.email,
+        deletePassword
       );
 
-      await reauthenticateWithCredential(auth.currentUser!, credential);
-      await updatePassword(auth.currentUser!, newPassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      await deleteDoc(doc(db, "users", user!.uid));
+      await deleteUser(auth.currentUser);
 
-      setPwdMessage("Hasło zostało zmienione");
-      setShowPasswordBox(false);
-    } catch (err: any) {
-      console.error(err);
-      setPwdMessage("Błąd zmiany hasła");
-    }
-  };
-
-  // reset hasła przez e-mail
-  const handleSendResetLink = async () => {
-    try {
-      await sendPasswordResetEmail(auth, formData.email);
-      setPwdMessage("Link wysłany na e-mail");
-    } catch (err) {
-      console.error(err);
-      setPwdMessage("Błąd wysyłania linku");
+      await logout();
+      navigate("/");
+    } catch {
+      setDeleteError("Nieprawidłowe hasło lub sesja wygasła.");
     }
   };
 
   return (
-    <div className="min-h-[80vh] bg-gray-50 px-4 py-10 flex justify-center">
-      <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="max-w-2xl mx-auto p-8 bg-white shadow rounded-xl mt-8">
+      <h1 className="text-3xl font-bold text-purple-700 mb-6 text-center">
+        Twój profil
+      </h1>
 
-        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Dane osobowe
-          </h2>
+      <label className="block text-sm font-medium mb-1">Imię *</label>
+      <input
+        name="firstName"
+        value={form.firstName}
+        onChange={handleChange}
+        className="w-full px-4 py-2 border rounded"
+      />
+      {errors.firstName && (
+        <p className="text-sm text-red-600 mt-1 mb-3">
+          {errors.firstName}
+        </p>
+      )}
 
-          <div className="flex flex-col gap-3">
+      <label className="block text-sm font-medium mb-1 mt-2">
+        Nazwisko *
+      </label>
+      <input
+        name="lastName"
+        value={form.lastName}
+        onChange={handleChange}
+        className="w-full px-4 py-2 border rounded"
+      />
+      {errors.lastName && (
+        <p className="text-sm text-red-600 mt-1 mb-4">
+          {errors.lastName}
+        </p>
+      )}
+
+      <h2 className="text-xl font-semibold mt-6 mb-4">
+        Adres dostawy
+      </h2>
+
+      {(["street", "postalCode", "city", "country", "phone"] as const).map(
+        (field) => (
+          <div key={field} className="mb-3">
+            <label className="block text-sm font-medium mb-1">
+              {field === "street" && "Ulica"}
+              {field === "postalCode" && "Kod pocztowy"}
+              {field === "city" && "Miasto"}
+              {field === "country" && "Kraj"}
+              {field === "phone" && "Telefon"}
+            </label>
             <input
-              name="firstName"
-              disabled={!editing}
-              placeholder="Imię"
-              value={formData.firstName}
+              name={field}
+              value={form.address[field]}
               onChange={handleChange}
-              className="input-field"
+              className="w-full px-4 py-2 border rounded"
+            />
+            {errors[field] && (
+              <p className="text-sm text-red-600 mt-1">
+                {errors[field]}
+              </p>
+            )}
+          </div>
+        )
+      )}
+
+      {errors.general && (
+        <p className="text-sm text-red-600 mt-2">
+          {errors.general}
+        </p>
+      )}
+      {msg && (
+        <p className="text-sm text-green-600 mt-2">
+          {msg}
+        </p>
+      )}
+
+      <button
+        onClick={handleSave}
+        className="w-full mt-4 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-semibold"
+      >
+        Zapisz dane
+      </button>
+
+      <div className="mt-6 flex flex-col gap-3">
+        <button
+          onClick={() => navigate("/orders")}
+          className="w-full border border-purple-600 text-purple-700 py-2 rounded font-semibold hover:bg-purple-50"
+        >
+          Moje zamówienia
+        </button>
+
+        <button
+          onClick={handlePasswordReset}
+          className="w-full border border-blue-600 text-blue-600 py-2 rounded font-semibold hover:bg-blue-50"
+        >
+          Zmień hasło
+        </button>
+
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          className="w-full bg-red-600 text-white py-2 rounded font-semibold hover:bg-red-700"
+        >
+          Usuń konto
+        </button>
+      </div>
+
+      {pwdMessage && (
+        <p className="text-sm text-center text-gray-700 mt-3">
+          {pwdMessage}
+        </p>
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
+            <h2 className="text-xl font-bold mb-4 text-red-600">
+              Potwierdź usunięcie konta
+            </h2>
+
+            <label className="block text-sm font-medium mb-1">
+              Podaj hasło
+            </label>
+            <input
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              className="w-full px-4 py-2 border rounded mb-2"
             />
 
-            <input
-              name="lastName"
-              disabled={!editing}
-              placeholder="Nazwisko"
-              value={formData.lastName}
-              onChange={handleChange}
-              className="input-field"
-            />
-
-            <input
-              name="email"
-              disabled={!editing}
-              placeholder="E-mail"
-              value={formData.email}
-              onChange={handleChange}
-              className="input-field"
-            />
-
-            {message && (
-              <p className="text-sm text-center mt-2 text-green-600">
-                {message}
+            {deleteError && (
+              <p className="text-sm text-red-600 mb-2">
+                {deleteError}
               </p>
             )}
 
-            <div className="flex gap-2 mt-3">
-              {editing ? (
-                <>
-                  <button
-                    onClick={handleSave}
-                    className="btn-primary flex-1"
-                  >
-                    Zapisz
-                  </button>
-                  <button
-                    onClick={() => setEditing(false)}
-                    className="btn-secondary flex-1"
-                  >
-                    Anuluj
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="btn-primary w-full"
-                >
-                  Edytuj dane
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Adres dostawy
-          </h2>
-
-          <div className="flex flex-col gap-3">
-            <input
-              name="street"
-              disabled={!editing}
-              placeholder="Ulica i numer"
-              value={formData.street}
-              onChange={handleChange}
-              className="input-field"
-            />
-
-            <input
-              name="city"
-              disabled={!editing}
-              placeholder="Miasto"
-              value={formData.city}
-              onChange={handleChange}
-              className="input-field"
-            />
-
-            <input
-              name="postalCode"
-              disabled={!editing}
-              placeholder="Kod pocztowy"
-              value={formData.postalCode}
-              onChange={handleChange}
-              className="input-field"
-            />
-
-            <input
-              name="country"
-              disabled={!editing}
-              placeholder="Kraj"
-              value={formData.country}
-              onChange={handleChange}
-              className="input-field"
-            />
-
-            <input
-              name="phone"
-              disabled={!editing}
-              placeholder="Telefon"
-              value={formData.phone}
-              onChange={handleChange}
-              className="input-field"
-            />
-          </div>
-        </div>
-
-        <Link
-          to="/orders"
-          className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition cursor-pointer flex flex-col justify-center items-center"
-        >
-          <h2 className="text-xl font-semibold text-gray-900">
-            Moje zamówienia
-          </h2>
-          <p className="text-purple-700 font-medium mt-2">
-            Zobacz historię zamówień →
-          </p>
-        </Link>
-
-        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Bezpieczeństwo konta
-          </h2>
-
-          <button
-            onClick={() => setShowPasswordBox((v) => !v)}
-            className="btn-secondary w-full"
-          >
-            Zmień hasło
-          </button>
-
-          {showPasswordBox && (
-            <div className="mt-4 flex flex-col gap-3">
-              <input
-                type="password"
-                placeholder="Obecne hasło"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                className="input-field"
-              />
-              <input
-                type="password"
-                placeholder="Nowe hasło"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="input-field"
-              />
-              <input
-                type="password"
-                placeholder="Powtórz hasło"
-                value={newPasswordConfirm}
-                onChange={(e) =>
-                  setNewPasswordConfirm(e.target.value)
-                }
-                className="input-field"
-              />
-
-              {pwdMessage && (
-                <p
-                  className={`text-sm text-center ${
-                    pwdMessage.toLowerCase().includes("błąd")
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {pwdMessage}
-                </p>
-              )}
-
+            <div className="flex gap-3 mt-4">
               <button
-                onClick={handleChangePassword}
-                className="btn-primary w-full"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeletePassword("");
+                  setDeleteError("");
+                }}
+                className="flex-1 py-2 border rounded"
               >
-                Zapisz nowe hasło
+                Anuluj
               </button>
 
               <button
-                onClick={handleSendResetLink}
-                className="btn-secondary w-full"
+                onClick={confirmDeleteAccount}
+                className="flex-1 py-2 bg-red-600 text-white rounded hover:bg-red-700"
               >
-                Wyślij link resetujący
+                Usuń konto
               </button>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

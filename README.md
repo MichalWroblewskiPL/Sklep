@@ -1,73 +1,204 @@
-# React + TypeScript + Vite
+PcBase – Sklep internetowy podzespołów komputerowych
+Opis projektu
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+PcBase to aplikacja webowa typu e-commerce, stworzona w ramach pracy inżynierskiej.
+Projekt umożliwia sprzedaż komponentów komputerowych oraz zarządzanie zamówieniami z podziałem na role użytkowników.
 
-Currently, two official plugins are available:
+Aplikacja została zrealizowana w technologii React + TypeScript z wykorzystaniem Firebase jako backendu (Authentication, Firestore).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Funkcjonalności aplikacji:
+  1. Użytkownik (User)
 
-## React Compiler
+- rejestracja i logowanie
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- edycja profilu użytkownika
 
-## Expanding the ESLint configuration
+- zarządzanie danymi adresowymi
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- przeglądanie produktów i kategorii
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- koszyk zapisany w bazie danych (Firestore)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- składanie zamówień:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+    płatność: gotówka / karta (przy odbiorze)
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+    dostawa: odbiór osobisty / kurier
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+    podgląd historii zamówień
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+    szczegóły zamówienia i status realizacji
+
+- usunięcie konta
+
+  2. Pracownik (Employee)
+
+- dostęp do panelu administracyjnego
+
+- lista wszystkich zamówień:
+
+    paginacja
+
+    wyszukiwanie po ID zamówienia lub ID użytkownika
+
+    szczegóły zamówienia
+
+- zmiana statusu zamówienia:
+
+    Oczekujące
+
+    Wysłane
+
+    Dostarczone
+
+    Anulowane
+
+- lista produktów:
+
+    paginacja
+
+    wyszukiwanie po nazwie
+
+    edycja produktów
+
+  3. Dane testowe (loginy)
+
+- Testowy użytkownik
+  Login: user@test.com
+  Hasło: Test1@User
+
+  Można testować:
+
+  - składanie zamówień
+
+  - koszyk
+
+  - profil użytkownika
+
+  - historię zamówień
+
+  - szczegóły zamówień
+
+- Testowy pracownik
+  Login: pracownik@test.com
+  Hasło: Test1@Pracownik
+
+
+  Można testować:
+
+  - panel pracownika
+
+  - zarządzanie zamówieniami
+
+  - zmianę statusów
+
+  - wyszukiwanie i paginację
+
+  - zarządzanie produktami
+
+4. Technologie wykorzystane w projekcie
+Frontend:
+
+- React 18
+
+- TypeScript
+
+- React Router
+
+- Tailwind CSS
+
+- Context API
+
+Backend:
+
+- Firebase Authentication
+
+- Firebase Firestore
+
+- Firebase Storage
+
+Testy:
+
+- Jest
+
+- React Testing Library
+
+- ts-jest
+
+- jsdom
+
+5. Wymagania systemowe
+- System operacyjny
+
+  Windows 10 / Windows 11
+
+- Wymagane narzędzia
+
+  Node.js ≥ 18.x
+  https://nodejs.org
+
+  npm (instalowany razem z Node.js)
+
+  Git
+  https://git-scm.com
+
+6.Instrukcja instalacji projektu (krok po kroku)
+
+- Pobranie projektu z repozytorium Git
+  git clone <ADRES_REPOZYTORIUM>
+  lub pobrać projekt w ZIP i wypakować
+  
+  cd Sklep (uruchomić sklep w konsoli)
+
+- Instalacja zależności
+npm install
+
+- Uruchomienie aplikacji (tryb developerski)
+npm run dev
+
+
+Po uruchomieniu aplikacja będzie dostępna pod adresem:
+
+http://localhost:5173
+
+7. Uruchamianie testów
+Instalacja środowiska testowego (jeśli jeszcze nie jest)
+npm install
+
+Uruchomienie testów
+npm test
+
+Oczekiwany wynik:
+Test Suites: 2 passed, 2 total
+Tests:       2 passed, 2 total
+
+
+Testy obejmują:
+
+renderowanie formularza logowania
+
+walidację danych wejściowych (adres e-mail)
+
+8. Bezpieczeństwo
+
+aplikacja nie korzysta z SQL → brak podatności na SQL Injection
+
+uwierzytelnianie realizowane przez Firebase Authentication
+
+kontrola dostępu oparta o role użytkowników
+
+reguły bezpieczeństwa Firestore ograniczają dostęp do danych
+
+walidacja danych po stronie klienta
+
+9. Testowanie
+
+W projekcie zastosowano testy jednostkowe interfejsu użytkownika z wykorzystaniem Jest oraz React Testing Library.
+Testy umożliwiły wykrycie błędów dostępności (a11y) oraz niespójności walidacji formularzy, które zostały poprawione w trakcie realizacji projektu.
+
+
+10. Autorzy
+
+Michał Wróblewski
+Mateusz Żełudziewicz
+Klaudia Włoczyk
