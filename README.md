@@ -31,7 +31,7 @@ Funkcjonalności aplikacji:
 
 - usunięcie konta
 
-  2. Pracownik
+2. Pracownik
 
 - dostęp do panelu administracyjnego
 
