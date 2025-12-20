@@ -7,7 +7,7 @@ Projekt umożliwia sprzedaż komponentów komputerowych oraz zarządzanie zamów
 Aplikacja została zrealizowana w technologii React + TypeScript z wykorzystaniem Firebase jako backendu (Authentication, Firestore).
 
 Funkcjonalności aplikacji:
-  1. Użytkownik (User)
+  1. Użytkownik
 
 - rejestracja i logowanie
 
@@ -31,7 +31,7 @@ Funkcjonalności aplikacji:
 
 - usunięcie konta
 
-  2. Pracownik (Employee)
+  2. Pracownik
 
 - dostęp do panelu administracyjnego
 
