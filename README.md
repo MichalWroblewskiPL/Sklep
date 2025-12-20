@@ -61,7 +61,7 @@ Funkcjonalności aplikacji:
 
     edycja produktów
 
-  3. Dane testowe (loginy)
+3. Dane testowe (loginy)
 
 - Testowy użytkownik
   Login: user@test.com
